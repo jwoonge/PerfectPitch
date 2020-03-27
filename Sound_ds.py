@@ -1,6 +1,7 @@
 import os
 from os import rename
 import array
+from pydub import AudioSegment
 
 def read_little_endian(num, wav_file):
     buf = wav_file.read(num)
@@ -93,7 +94,7 @@ class sound:
         else:
             self.extract_from_link(filename)
 
-        #self.downmixing()
+        self.downmixing()
 
     def downmixing(self):
         downmixed = []
@@ -108,7 +109,13 @@ class sound:
 
 
     def extract_from_mp3(self, filename):
-        print("TODO")
+        mp3_file = AudioSegment.from_mp3(filename)
+        self.sample_rate = mp3_file.frame_rate
+        samples = mp3_file.split_to_mono()
+        for i in range(len(samples)):
+            self.data.append(samples[i].get_array_of_samples())
+        self.split_pcm()
+        del mp3_file
 
     def extract_from_wav(self, filename):
         wav_file = open(filename, 'rb+')
