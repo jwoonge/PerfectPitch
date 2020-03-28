@@ -104,7 +104,6 @@ class pd_processor:
             last_peak = peak
             
 
-
     
 #test_sound = sound('test.mp3')
 #test_sound2 = sound('test2.mp3')
