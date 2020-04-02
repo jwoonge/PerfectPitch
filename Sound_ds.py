@@ -2,49 +2,10 @@ import os
 from os import rename
 import array
 from pydub import AudioSegment
+import youtube_dl
+import time
+import numpy as np
 
-def read_little_endian(num, wav_file):
-    buf = wav_file.read(num)
-    '''if not buf:
-        return None'''
-    ret = 0
-    for i in range(0,num):
-        ret+=buf[i]*(256**i)
-    return ret
-
-def convert_signed(value, bitnum):
-    ret = value
-    if value > 2**(bitnum*8-1):
-        ret -= 2**(bitnum*8)
-        return ret
-    return ret
-
-def split_wav(wav_pointer, num_channels, value_size, value_count):
-    '''
-    num_channels
-    1 (mono): [data][data][data]...
-    2 (stereo): [left][right]...
-    3 (3ch) : [left][right][center]...
-    4 (quad): [front left][front right][rear left][rear right]...
-    5 (4ch) : [left][center][right][surround]...
-    6 (6ch) : [left center][left][center][right center][right][surround]...
-    '''
-    split_data = []
-    converted_num_channels = 1
-    if num_channels==5:
-        converted_num_channels = 4
-    else:
-        converted_num_channels = num_channels
-    
-    for i in range(converted_num_channels):
-        split_data.append([])
-
-    print('start converting...')
-
-    for i in range(value_count * converted_num_channels):
-        split_data[i%converted_num_channels].append(convert_signed(read_little_endian(value_size, wav_pointer), value_size))
-
-    return split_data
 
 def Write_wav(filename, input, sample_rate=16000, value_size=2, num_channels=1):
     bytes_per_sample = value_size
@@ -85,16 +46,15 @@ def Write_wav(filename, input, sample_rate=16000, value_size=2, num_channels=1):
 
 
 class sound:
-    def __init__(self, filename):
+    def __init__(self, filename, file=True):
+        #start_time = time.time()
         self.data = []
-        if '.mp3' in filename:
-            self.extract_from_mp3(filename)
-        elif '.wav' in filename:
-            self.extract_from_wav(filename)
+        if '.mp3' in filename or '.wav' in filename:
+            self.extract_from_file(filename)
         else:
             self.extract_from_link(filename)
-
-        self.downmixing()
+        
+        #print("time:", time.time()-start_time)
 
     def downmixing(self):
         downmixed = []
@@ -107,40 +67,42 @@ class sound:
         self.data = downmixed
         del downmixed
 
+    def extract_from_file(self, filename):
+        sound_file = AudioSegment.from_file(filename)
+        self.sample_rate = sound_file.frame_rate
 
-    def extract_from_mp3(self, filename):
-        mp3_file = AudioSegment.from_mp3(filename)
-        self.sample_rate = mp3_file.frame_rate
-        samples = mp3_file.split_to_mono()
+        samples = sound_file.split_to_mono()
+        del sound_file
+
         for i in range(len(samples)):
             self.data.append(samples[i].get_array_of_samples())
-        self.split_pcm()
-        del mp3_file
-
-    def extract_from_wav(self, filename):
-        wav_file = open(filename, 'rb+')
-        RIFF = wav_file.read(12)
-        fmt1 = wav_file.read(10)
-        num_channels = read_little_endian(2, wav_file)
-        print('num_channels : ', num_channels)
-        self.sample_rate = read_little_endian(4, wav_file)
-        fmt2 = wav_file.read(6)
-        value_size = int(read_little_endian(2, wav_file) / 8)
-        while(True):
-            ChunkID = wav_file.read(4)
-            if ChunkID == b'data' :
-                break
-            wav_file.seek(-3, 1)
-        self.value_count = int(read_little_endian(4, wav_file) / (num_channels * value_size))
-
-        self.data = split_wav(wav_file, num_channels, value_size, self.value_count)
-        #self.split_pcm()
-
-        wav_file.close()
-
-    def split_pcm(self):
-        for i in range(len(self.data)):
-            Write_wav(str(i) + '.wav', self.data[i], self.sample_rate)
+        self.downmixing()
 
     def extract_from_link(self, link):
-        print('TODO')
+        FORMAT = "mp3"
+
+        options = {
+            'format':'bestaudio/best',
+            'extractaudio':True,
+            'audioformat':FORMAT,
+            'outtmpl' : 'temp.%(ext)s',
+            'noplaylist':True,
+            'quiet':True,
+            'nocheckcertificate':True,
+            'postprocessors': [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': FORMAT,
+                'preferredquality': '192',
+            }]
+        }
+
+        with youtube_dl.YoutubeDL(options) as ydl:
+            try:
+                print("Downloading...")
+                ydl.download([link])
+            except:
+                print("Error : invalid")
+                exit()
+            print("Download Complete")
+        self.extract_from_file('temp.mp3')
+        os.remove('temp.mp3') ###########

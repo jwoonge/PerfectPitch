@@ -1,4 +1,5 @@
 from collections import namedtuple
+import pretty_midi
 
 def LUT(pitch_num):
     gye = (pitch_num-3)%12
