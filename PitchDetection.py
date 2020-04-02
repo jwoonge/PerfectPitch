@@ -49,13 +49,15 @@ class pd_processor:
     def __init__(self):
         self.dict = get_key_freq()
         self.key_freq = list(self.dict)
-        self.result = score()
 
     def do(self, input_pcm):
         self.pcm = input_pcm
+        self.sample_rate = input_pcm.sample_rate
         self.get_spectrogram()
+        self.result = score(self.sample_rate, self.time_resolution)
         self.detect_melody(20)
         self.result.print_notes()
+        self.result.make_midi()
 
     def get_near_pitch_num(self, freq):
         keys = np.array(list(self.dict.keys()))
@@ -70,15 +72,18 @@ class pd_processor:
         freq_resolution = self.key_freq[1]-self.key_freq[0]
         n = int(self.pcm.sample_rate / freq_resolution)
         freq_resolution = self.pcm.sample_rate / n
-        time_resolution = n / self.pcm.sample_rate
-        #n/=10
+        self.time_resolution = n / self.pcm.sample_rate
         freq, t, Zxx = signal.stft(self.pcm.data, self.pcm.sample_rate, nperseg = n)
         # Zxx : [freq][time]
         self.spec = np.transpose(min_max_norm(np.abs(Zxx))*127)
-        #print("spec:", np.shape(self.spec))
         #Show_Spectrogram(self.spec, vmax=127)
-        
 
+        '''
+        TODO : 
+        stft 과정에서 frame 겹치는 부분에 음이 존재할 경우 흐려지는 문제 발생
+            -> winstep 조정하면서 time_resolution을 그에 맞게 조정해주어야 함
+        '''
+        
     def detect_melody(self, th):
         peak_i = -1
         start = 0
@@ -98,15 +103,22 @@ class pd_processor:
                 peak = -1
             
             if peak>0 and peak != last_peak:
-                self.result.push_note(peak, i, maxv)
+                self.result.push_note(peak, i, i+1, maxv)
                 print("detected")
 
             last_peak = peak
-            
-
+    
+    def detect_accord(self):
+        print("TODO")
+        '''
+        TODO :
+        threshold 설정 문제
+        start-end detect
+        배수 감쇄 필요
+        '''
     
 #test_sound = sound('test.mp3')
 #test_sound2 = sound('test2.mp3')
-test_sound3 = sound('test3.mp3')
+test_sound3 = sound('bmajor.mp3')
 pdp = pd_processor()
 pdp.do(test_sound3)
