@@ -46,7 +46,7 @@ class score:
     def print_notes(self):
         for i in range(len(self.note_stack)):
             gye, oc = LUT(self.note_stack[i].pitch)
-            print(gye, oc)
+            print("pitch:",gye, oc, "\tframe:",self.note_stack[i].start,"\tvolume:%.2f" %self.note_stack[i].velocity )
 
     def make_midi(self):
         midi = pretty_midi.PrettyMIDI(initial_tempo = self.bpm)
@@ -60,3 +60,20 @@ class score:
 
         midi.instruments.append(piano)
         midi.write("output.mid")
+        print("midi generated")
+
+'''
+testscore = score(48000, 0.5) # 0.5 sec per each frame
+
+# make C Chord
+testscore.push_note(51,3,7,100) # C5(51), 3-7frame, volume 100
+testscore.push_note(55,3,7,100) # E5(55), 3-7frame, volume 100
+testscore.push_note(58,3,7,100) # G5(58), 3-7frame, volume 100
+
+# make F Chord
+testscore.push_note(56,10,13,70) # F5(56), 10-13frame, volume 70
+testscore.push_note(60,10,13,70) # A6(60), 10-13frame, volume 70
+testscore.push_note(63,10,13,70) # C6(63), 10-13frame, volume 70
+
+testscore.make_midi()
+'''

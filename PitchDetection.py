@@ -55,8 +55,8 @@ class pd_processor:
         self.sample_rate = input_pcm.sample_rate
         self.get_spectrogram()
         self.result = score(self.sample_rate, self.time_resolution)
-        self.detect_melody(20)
-        self.result.print_notes()
+        self.detect_pitches()
+        #self.result.print_notes()
         self.result.make_midi()
 
     def get_near_pitch_num(self, freq):
@@ -69,15 +69,19 @@ class pd_processor:
         return idx
 
     def get_spectrogram(self):
+        print("Calc Spectrogram...", end=" ")
         freq_resolution = self.key_freq[1]-self.key_freq[0]
         n = int(self.pcm.sample_rate / freq_resolution)
         freq_resolution = self.pcm.sample_rate / n
-        self.time_resolution = n / self.pcm.sample_rate
-        freq, t, Zxx = signal.stft(self.pcm.data, self.pcm.sample_rate, nperseg = n)
+        overlap_rate = 0.95
+        time_resolution_rate = 1-overlap_rate
+        self.time_resolution = n / self.pcm.sample_rate * time_resolution_rate
+        freq, t, Zxx = signal.stft(self.pcm.data, self.pcm.sample_rate, nperseg = n, noverlap = int(n*overlap_rate))
         # Zxx : [freq][time]
         self.spec = np.transpose(min_max_norm(np.abs(Zxx))*127)
         #Show_Spectrogram(self.spec, vmax=127)
-
+        print("Done")
+        print("\t sec per frame : ", self.time_resolution)
         '''
         TODO : 
         stft 과정에서 frame 겹치는 부분에 음이 존재할 경우 흐려지는 문제 발생
@@ -103,22 +107,44 @@ class pd_processor:
                 peak = -1
             
             if peak>0 and peak != last_peak:
-                self.result.push_note(peak, i, i+1, maxv)
+                #self.result.push_note(peak, i, i+1, maxv)
+                self.result.push_note(peak, i, i+1, 100)
                 print("detected")
 
             last_peak = peak
     
-    def detect_accord(self):
-        print("TODO")
-        '''
-        TODO :
-        threshold 설정 문제
-        start-end detect
-        배수 감쇄 필요
-        '''
+    def detect_pitches(self):
+        peak_map = [[0 for y in range(len(self.spec[0]))] for x in range(len(self.spec))]
+        opt_th = 10
+
+        for j in range(len(self.spec[0])):
+            temp_spec = []
+            for i in range(len(self.spec)):
+                temp_spec.append(self.spec[i][j])
+            peaks,_ = signal.find_peaks(temp_spec, height=opt_th)
+            for i in range(len(self.spec)):
+                if i in peaks:
+                    peak_map[i][j] = self.spec[i][j]
+
+        pitch_map = [[0 for y in range(88)] for x in range(len(self.spec))]
+        for i in range(len(peak_map)):
+            for j in range(len(peak_map[0])):
+                converted = self.get_near_pitch_num(j)
+                if pitch_map[i][converted] < peak_map[i][j]:
+                    pitch_map[i][converted] = peak_map[i][j]
+
+        for i in range(len(pitch_map)):
+            for j in range(len(pitch_map[i])):
+                if pitch_map[i][j]>0:
+                    self.result.push_note(j, i, i+10, pitch_map[i][j])
+
+        self.result.print_notes()
+
+
     
 #test_sound = sound('test.mp3')
 #test_sound2 = sound('test2.mp3')
+#test_sound3 = sound('https://www.youtube.com/watch?v=Hmg7zXimHcc')
 test_sound3 = sound('bmajor.mp3')
 pdp = pd_processor()
 pdp.do(test_sound3)
