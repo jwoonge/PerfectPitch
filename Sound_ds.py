@@ -68,6 +68,7 @@ class sound:
         del downmixed
 
     def extract_from_file(self, filename):
+        print("Extract PCM from file...", end=" ")
         sound_file = AudioSegment.from_file(filename)
         self.sample_rate = sound_file.frame_rate
 
@@ -77,6 +78,7 @@ class sound:
         for i in range(len(samples)):
             self.data.append(samples[i].get_array_of_samples())
         self.downmixing()
+        print("Done")
 
     def extract_from_link(self, link):
         FORMAT = "mp3"
