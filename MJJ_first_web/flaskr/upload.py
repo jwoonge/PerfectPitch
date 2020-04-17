@@ -18,15 +18,22 @@ def upload_file() :
 
     if request.method == 'POST' :
       f = request.files['file']
-      f.save(secure_filename(f.filename))
-      soundproc = soundfileproc.sound(f.filename)
-      pcmvalue = str(soundproc.data)
-      route = 'flaskr/'
-      filename = 'pcmtxt.txt'
-      file = open(route + filename, 'w')
-      file.write(pcmvalue)
-      file.close()
-      return render_template('upload/uploadfinish.html')
+      testname = f.filename
+      if '.wav' in testname or '.mp3' in testname:
+        f.save(secure_filename(f.filename))
+        soundproc = soundfileproc.sound(f.filename)
+        pcmvalue = str(soundproc.data)
+        route = 'flaskr/'
+        filename = 'pcmtxt.txt'
+        file = open(route + filename, 'w')
+        file.write(pcmvalue)
+        file.close()
+        return send_file(filename,
+                       mimetype='text/txt',
+                       attachment_filename='downloaded_pcm_txt_file_name.txt',# 다운받아지는 파일 이름.
+                       as_attachment=True)
+      else :
+        return 'error'
 
 
 @bp.route('/txt_pcm_file_download_with_file')

@@ -27,7 +27,10 @@ def youtube_link() :
       file = open(route + filename, 'w')
       file.write(pcmvalue)
       file.close()
-      return render_template('Youtube/youtubefinish.html')
+      return send_file(filename,
+                       mimetype='text/txt',
+                       attachment_filename='downloaded_pcm_txt_file_name.txt',  # 다운받아지는 파일 이름.
+                       as_attachment=True)
 
 
 @bp.route('/txt_pcm_file_download_with_file')
