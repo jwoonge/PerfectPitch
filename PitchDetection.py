@@ -5,10 +5,41 @@ import math
 import numpy as np
 from scipy import signal
 from scipy import fftpack
+from scipy.ndimage import filters
 
+import time
 import matplotlib.pyplot as plt
 import seaborn as sns
+from celluloid import Camera
 
+def Show_Distribution(input_spec):
+    maxes = []
+    for i in range(len(input_spec)):
+        maxes.append(max(input_spec[i]))
+    maxZ = int(max(maxes))
+    distribution = [0 for i in range(maxZ+5)]
+    for i in range(len(input_spec)):
+        for j in range(len(input_spec[i])):
+            distribution[int(input_spec[i][j])] += 1
+    
+    plt.plot(distribution)
+    plt.plot([0,len(distribution)],[0,0])
+    plt.show()
+
+def Show_Animation(input_spec,input_interval) :
+
+    # set figure and axes
+    f, ax = plt.subplots(figsize=(15,5))
+    camera = Camera(f)
+    xlabel = [i for i in range(88)]
+    ax.xaxis.set_ticks(np.arange(0, 88, 1))
+    for i in range(len(input_spec)) :
+        ax.plot(xlabel,input_spec[i])
+        camera.snap()
+        f
+
+    animation = camera.animate(interval= input_interval, repeat=True)
+    animation.save('animation.mp4')
 
 def Show_Spectrogram(input_Spec, vmin=0, vmax=150, input_list_c = [], input_list_r = [], transpose = True):
     ''' input : Spectogram [] '''
@@ -28,12 +59,6 @@ def Show_Spectrogram(input_Spec, vmin=0, vmax=150, input_list_c = [], input_list
     plt.show()
 
 
-def min_max_norm(x,axis=None):
-    min = x.min(axis=axis,keepdims=True)
-    max = x.max(axis=axis,keepdims=True)
-    result = (x-min)/(max-min)
-    return result
-
 def get_key_freq(key_count=88):
     center_a = 48
     key_freq = {i:0 for i in range(key_count)}
@@ -45,6 +70,21 @@ def get_key_freq(key_count=88):
 
     return output_dict
 
+def get_freq_dict(freq_range, tuning_rate=1):
+    dictionary = [0 for i in range(freq_range)]
+    for i in range(len(dictionary)):
+        dictionary[i] = get_near_pitch_num(int(i*tuning_rate))
+    return dictionary
+
+def get_near_pitch_num(freq):
+    keys = np.array(list(get_key_freq()))
+    if freq <= max(keys) and freq >= min(keys):
+        idx = np.abs(keys - freq)
+        idx = idx.argmin()
+    else:
+        idx = -1
+    return idx
+
 class pd_processor:
     def __init__(self):
         self.dict = get_key_freq()
@@ -53,98 +93,243 @@ class pd_processor:
     def do(self, input_pcm):
         self.pcm = input_pcm
         self.sample_rate = input_pcm.sample_rate
-        self.get_spectrogram()
+        self.spec = self.get_spectrogram(self.pcm)
         self.result = score(self.sample_rate, self.time_resolution)
         self.detect_pitches()
         #self.result.print_notes()
         self.result.make_midi()
 
-    def get_near_pitch_num(self, freq):
-        keys = np.array(list(self.dict.keys()))
-        if freq <= max(keys) and freq >= min(keys):
-            idx = np.abs(keys - freq)
-            idx = idx.argmin()
-        else:
-            idx = -1
-        return idx
+    def get_tuning_rate(self, spec):
+        maxes = []
+        for i in range(len(spec)):
+            maxv = max(spec[i])
+            listspec = list(spec[i])
+            maxes.append([maxv, listspec.index(maxv)])
+        maxes = sorted(maxes, key=lambda x:x[0], reverse=True)
+        max_freq = maxes[0][1]
+        near_freq = self.key_freq[get_near_pitch_num(max_freq)]
 
-    def get_spectrogram(self):
-        print("Calc Spectrogram...", end=" ")
+        return near_freq / max_freq
+
+
+    def get_spectrogram(self, pcm):
+        start_t = time.time()
+        print("Calc Spectrogram...")
         freq_resolution = self.key_freq[1]-self.key_freq[0]
-        n = int(self.pcm.sample_rate / freq_resolution)
+        n = int(pcm.sample_rate / freq_resolution)
         freq_resolution = self.pcm.sample_rate / n
         overlap_rate = 0.95
         time_resolution_rate = 1-overlap_rate
-        self.time_resolution = n / self.pcm.sample_rate * time_resolution_rate
-        freq, t, Zxx = signal.stft(self.pcm.data, self.pcm.sample_rate, nperseg = n, noverlap = int(n*overlap_rate))
+        self.time_resolution = n / pcm.sample_rate * time_resolution_rate
+        freq, t, Zxx = signal.stft(pcm.data, pcm.sample_rate, nperseg = n, noverlap = int(n*overlap_rate))
         # Zxx : [freq][time]
-        self.spec = np.transpose(min_max_norm(np.abs(Zxx))*127)
-        #Show_Spectrogram(self.spec, vmax=127)
-        print("Done")
+        Zxx = np.transpose(np.abs(Zxx))
+
+        tuning_rate = self.get_tuning_rate(Zxx)
+        print("\t Tuning rate : ",tuning_rate)
+
+        self.dict = get_freq_dict(len(Zxx[0]), tuning_rate)
+
+        end_t = time.time()
+        print("\t Fourier Transform Complete", end_t-start_t)
+
+        start_t = time.time()
+        spec_th = 1
+
+        spec = [[0 for y in range(88)] for x in range(len(Zxx))]
+        for i in range(len(Zxx)):
+            for j in range(len(Zxx[0])):
+                pitch = self.dict[j]
+                if Zxx[i][j] > spec_th:
+                    spec[i][pitch] += Zxx[i][j]
+        del Zxx
+        end_t = time.time()
+        print('\t Generating freq-to-pitch Complete', end_t-start_t)
+        start_t= time.time()
+        max_spec = 0
+        for i in range(len(spec)):
+            tempmax = max(spec[i])
+            if tempmax>max_spec:
+                max_spec = tempmax
+
+        for i in range(len(spec)):
+            for j in range(len(spec[i])):
+                spec[i][j] *= (127 / max_spec)
+                spec[i][j] = int(spec[i][j])
+
+        end_t = time.time()
+
+        print("\t Generating Spectrogram Complete", end_t-start_t)
         print("\t sec per frame : ", self.time_resolution)
-        '''
-        TODO : 
-        stft 과정에서 frame 겹치는 부분에 음이 존재할 경우 흐려지는 문제 발생
-            -> winstep 조정하면서 time_resolution을 그에 맞게 조정해주어야 함
-        '''
-        
-    def detect_melody(self, th):
-        peak_i = -1
-        start = 0
-        end = 0
-        for i in range(len(self.spec)):
-            maxv = 0
-            peak_i = -1
-            for j in range(len(self.spec[i])):
-                if self.spec[i][j] > maxv:
-                    maxv = self.spec[i][j]
-                    peak_i = j
-            if maxv>th :
-                print("over threshold", end=' ')
-                peak = self.get_near_pitch_num(peak_i)
-                print(peak)
-            else:
-                peak = -1
-            
-            if peak>0 and peak != last_peak:
-                #self.result.push_note(peak, i, i+1, maxv)
-                self.result.push_note(peak, i, i+1, 100)
-                print("detected")
 
-            last_peak = peak
-    
+        return spec
+         
+
     def detect_pitches(self):
-        peak_map = [[0 for y in range(len(self.spec[0]))] for x in range(len(self.spec))]
-        opt_th = 10
+        print("Detecting pitches...")
+        num_top = 10
+        peaks = []
+        for i in range(len(self.spec)):
+            pairs = []
+            for j in range(len(self.spec[i])):
+                pairs.append([j,self.spec[i][j]])
+            pairs = sorted(pairs, key=lambda x:x[1], reverse=True)
+            pairs = pairs[0:num_top]
+            pairs = sorted(pairs, key=lambda x:x[0])
+            peaks.append(pairs)
 
-        for j in range(len(self.spec[0])):
-            temp_spec = []
-            for i in range(len(self.spec)):
-                temp_spec.append(self.spec[i][j])
-            peaks,_ = signal.find_peaks(temp_spec, height=opt_th)
-            for i in range(len(self.spec)):
-                if i in peaks:
-                    peak_map[i][j] = self.spec[i][j]
-
-        pitch_map = [[0 for y in range(88)] for x in range(len(self.spec))]
+        ## concave인지 확인 ##
+        peak_map = [[0 for y in range(88)] for x in range(len(self.spec))]
+        for i in range(len(peaks)):
+            for j in range(len(peaks[i])):
+                peak_map[i][peaks[i][j][0]] = peaks[i][j][1]
+        del peaks
         for i in range(len(peak_map)):
-            for j in range(len(peak_map[0])):
-                converted = self.get_near_pitch_num(j)
-                if pitch_map[i][converted] < peak_map[i][j]:
-                    pitch_map[i][converted] = peak_map[i][j]
+            for j in range(1,len(peak_map[i])-1):
+                if peak_map[i][j]<peak_map[i][j-1] or peak_map[i][j]<peak_map[i][j+1]:
+                    peak_map[i][j] = 0
+        
+        ## 옥타브 감쇄 ##
+        octave_reduce_rate_r = 0.6
+        octave_reduce_rate_l = 0
+        misol_reduce_rate = 0.4
 
-        for i in range(len(pitch_map)):
-            for j in range(len(pitch_map[i])):
-                if pitch_map[i][j]>0:
-                    self.result.push_note(j, i, i+10, pitch_map[i][j])
+        reduce_octave_count = 0
+        reduce_misol_count = 0
+        for i in range(len(peak_map)):
+            octaves = [[] for k in range(12)]
+            for j in range(len(peak_map[i])):
+                if peak_map[i][j] >0:
+                    octaves[j%12].append([j,peak_map[i][j]])
+            # octaves[gye_num] = [[pitch,value],[pitch,value]]..
+            for j in range(len(octaves)):
+                ## 동일 계 감쇄
+                if len(octaves[j])>1:
+                    octaves[j] = sorted(octaves[j], key=lambda x:x[1], reverse=True)
+                    reduce_value = octaves[j][0][1]
+                    for k in range(1,len(octaves[j])):
+                        if (octaves[j][0][0]-octaves[j][k][0])>0 :
+                            octave_reduce_rate = octave_reduce_rate_l
+                        else:
+                            octave_reduce_rate = octave_reduce_rate_r
+                        peak_map[i][octaves[j][k][0]] -= reduce_value*octave_reduce_rate
+                        if peak_map[i][octaves[j][k][0]]<0:
+                            peak_map[i][octaves[j][k][0]]=0
+                            reduce_octave_count += 1
+                    ## +4음 감쇄
+                    mi = (j+4)%12
+                    for k in range(len(octaves[mi])):
+                        if (octaves[j][0][0]-octaves[mi][k][0])>0 :
+                            octave_reduce_rate = octave_reduce_rate_l
+                        elif (octaves[j][0][0]-octaves[mi][k][0])<0:
+                            octave_reduce_rate = octave_reduce_rate_r
+                        else:
+                            octave_reduce_rate = 1
+                        peak_map[i][octaves[mi][k][0]] -= reduce_value*octave_reduce_rate*misol_reduce_rate
+                        if peak_map[i][octaves[mi][k][0]]<0:
+                            peak_map[i][octaves[mi][k][0]]=0
+                            reduce_misol_count += 1
+                    ## +7음 감쇄
+                    sol = (j+7)%12
+                    for k in range(len(octaves[sol])):
+                        if (octaves[j][0][0]-octaves[sol][k][0])>0 :
+                            octave_reduce_rate = octave_reduce_rate_l
+                        elif (octaves[j][0][0]-octaves[sol][k][0])<0:
+                            octave_reduce_rate = octave_reduce_rate_r
+                        else:
+                            octave_reduce_rate = 1
+                        peak_map[i][octaves[sol][k][0]] -= reduce_value*octave_reduce_rate*misol_reduce_rate
+                        if peak_map[i][octaves[sol][k][0]]<0:
+                            peak_map[i][octaves[sol][k][0]]=0
+                            reduce_misol_count += 1
 
-        self.result.print_notes()
+        print("\t Removed by octave reducing : ",reduce_octave_count+reduce_misol_count,"pitches")
+        print("\t\tRemoved same octaves : ",reduce_octave_count)
+        print("\t\tRemoved misols : ", reduce_misol_count)
+        
+        ######################################################
+        max_th = 10
+        len_th = int(0.2/self.time_resolution)
+        spa_th = int(0.1/self.time_resolution)
+        ######################################################
+        val_th = 0
+        del_count = 0
+        
+        for j in range(88):
+            start = 0
+            i=0
+            pitch_stack = []
+            while i<len(peak_map):
+                if peak_map[i][j] >val_th:
+                    start = i
+                    peak_max = peak_map[start][j]
+                    peak_max_i = start
+                    while peak_map[i][j] >val_th and i<len(peak_map):
+                        if peak_map[i][j] > peak_max:
+                            peak_max = peak_map[i][j]
+                            peak_max_i = i
+                        i+=1
+                    end = i
+                    if end-start > len_th and peak_max > max_th:
+                        peak_range = []
+                        for k in range(start,end):
+                            peak_range.append(peak_map[k][j])
+                        peak_range = filters.gaussian_filter1d(peak_range,3)
 
+                        c = 0
+                        for k in range(1,len(peak_range)-1):
+                            if peak_range[k]>peak_range[k-1] and peak_range[k]>peak_range[k+1]:
+                                pitch_stack.append([j+9,start+k,start+k+10,100,start+k])
+                                c += 1
+                        if c==0:
+                            pitch_stack.append([j+9,start,end,100,peak_max_i])
+
+                        #pitch_stack.append([j+9,start,end,100,peak_max_i])
+                        #print(j+9, start, end)
+                    else:
+                        del_count += 1
+                else:
+                    i+=1
+            i=0
+
+            while(True):
+                if i>len(pitch_stack)-1:
+                    break
+                pitch = pitch_stack[i][0]
+                start = pitch_stack[i][1]
+                end = pitch_stack[i][2]
+                value=pitch_stack[i][3]
+                maxi= pitch_stack[i][4]
+
+                if i==len(pitch_stack)-1:
+                    #self.result.push_note(pitch,start,end,value)
+                    self.result.push_note(pitch,maxi,end,value)
+                    break
+                
+                else:
+                    if pitch_stack[i+1][1]-pitch_stack[i][2]>=spa_th:
+                        #self.result.push_note(pitch,start,end,value)
+                        self.result.push_note(pitch,maxi,end,value)
+                        i+=1
+                    else:
+                        #self.result.push_note(pitch,start,pitch_stack[i+1][2],value)
+                        self.result.push_note(pitch,maxi,pitch_stack[i+1][2],value)
+                        i+=2
+
+        print(del_count)
+        #Show_Animation(peak_map,self.time_resolution*1000)
+        
+
+
+        
 
     
 #test_sound = sound('test.mp3')
 #test_sound2 = sound('test2.mp3')
-#test_sound3 = sound('https://www.youtube.com/watch?v=Hmg7zXimHcc')
-test_sound3 = sound('bmajor.mp3')
+#test_sound3 = sound('https://www.youtube.com/watch?v=EeX8RWgq4Gs') #레헬른
+#test_sound3 = sound('bmajor.mp3')
+#test_sound3 = sound('https://www.youtube.com/watch?v=6vo66K06wFU') #아르카나
+#test_sound3 = sound('https://www.youtube.com/watch?v=22jE6FdYjxE') #왕벌
+test_sound3 = sound('https://www.youtube.com/watch?v=w-4xH2DLv8M') #작은별
 pdp = pd_processor()
 pdp.do(test_sound3)
