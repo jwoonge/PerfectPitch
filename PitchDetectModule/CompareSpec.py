@@ -9,6 +9,10 @@ import seaborn as sns
 from dtw import dtw
 from PitchDetection import pd_processor
 from PitchDetection import Show_Spectrogram
+import pyaudio  # audio recording
+import wave     # file saving
+import pygame   # midi playback
+import fnmatch  # name matching
 
 '''
 1. get spectrogram
@@ -187,11 +191,18 @@ def divide_spec(Spec, thres2 = 2):
             if (Spec[i][j] > thres2):
                 count += 1
         bright.append(count)
+
+    ############################
+    bright = []
+    for i in range(len(Spec)):
+    	bright.append(max(Spec[i]))
+
+    ##########################
     
     #plt.plot(bright)
 
     for i in range(1, len(bright) - 1):
-        if (bright[i] >= bright[i-1] and bright[i] >= bright[i+1] and bright[i] > max(bright) / 2):
+        if (bright[i] >= bright[i-1] and bright[i] >= bright[i+1] and bright[i] > 10):
             if (bright[i-1] >= bright[i-2] and bright[i+1] >= bright[i+2]):
                 boundary.append(i)
 
@@ -202,11 +213,11 @@ def divide_spec(Spec, thres2 = 2):
     boundary = list(set(boundary) - set(delete))
     boundary.sort()
 
-    print("boundary : ", boundary)
-
-    for i in range(0, len(boundary)):
-        plt.plot(Spec[boundary[i]])
-        plt.show()
+    print("num of boundary : ", len(boundary))
+	
+    #for i in range(0, len(boundary)):
+    #    plt.plot(Spec[boundary[i]])
+    #    plt.show()
 
     for i in range(0, len(boundary)):
         temp = []
@@ -262,6 +273,95 @@ def sound_similarity(sound1, sound2):
     print("score:",score)
     print("Accuracy:",score*dtw_accuracy)
 
+
+def compare_sound(name1, name2):
+
+    if '.mid' in name1:
+        midi_to_mp3(name1)
+        new_file = name1 + '.mp3'
+        sound1 = sound(new_file)
+    else:
+        sound1 = sound(name1)
+    if '.mid' in name2:
+        midi_to_mp3(name2)
+        new_file = name2 + '.mp3'
+        sound1 = sound(new_file)
+    else:
+        sound2 = sound(name2)
+
+    sound_similarity(sound1,sound2)  
+
+def play_music(music_file):
+    try:
+        pygame.mixer.music.load(music_file)
+        
+    except pygame.error:
+        print ("Couldn't play %s! (%s)" % (music_file, pygame.get_error()))
+        return
+        
+    pygame.mixer.music.play()
+
+def midi_to_mp3(name):
+
+	do_ffmpeg_convert = True    # Uses FFmpeg to convert WAV files to MP3. Requires ffmpeg.exe in the script folder or PATH
+	do_wav_cleanup = True       # Deletes WAV files after conversion to MP3
+	mp3_bitrate = 128
+	# Init pygame playback
+	sample_rate = 44100
+	bitsize = -16   # unsigned 16 bit
+	channels = 2
+	buffer = 1024
+	pygame.mixer.init(sample_rate, bitsize, channels, buffer)
+
+	# optional volume 0 to 1.0
+	pygame.mixer.music.set_volume(1.0)
+
+	# Init pyAudio
+	format = pyaudio.paInt16
+	audio = pyaudio.PyAudio()
+
+
+	new_file = name + '.wav'
+	# Open the stream and start recording
+	input_device = 2
+	stream = audio.open(format=format, channels=channels, rate=sample_rate, input=True, frames_per_buffer=buffer)        
+	# Playback the song
+	print("Playing " + name + "\n")
+	file = './' + name
+	play_music(file)
+
+	frames = []
+
+	# Record frames while the song is playing
+	while pygame.mixer.music.get_busy():
+	    frames.append(stream.read(buffer))
+	    
+	# Stop recording
+	stream.stop_stream()
+	stream.close()
+
+
+	# Configure wave file settings
+	wave_file = wave.open(new_file, 'wb')
+	wave_file.setnchannels(channels)
+	wave_file.setsampwidth(audio.get_sample_size(format))
+	wave_file.setframerate(sample_rate)
+
+	print("Saving " + new_file)   
+
+	# Write the frames to the wave file
+	wave_file.writeframes(b''.join(frames))
+	wave_file.close()
+
+	# Call FFmpeg to handle the MP3 conversion if desired
+	if do_ffmpeg_convert:
+	    os.system('ffmpeg -i ' + new_file + ' -y -f mp3 -ab ' + str(mp3_bitrate) + 'k -ac ' + str(channels) + ' -ar ' + str(sample_rate) + ' -vn ' + name + '.mp3')
+	    
+	    # Delete the WAV file if desired
+	    if do_wav_cleanup:        
+	        os.remove(new_file)
+	
+
 #sound1 = sound("https://www.youtube.com/watch?v=n0o1kgBRjh8")
 #sound2 = sound("https://www.youtube.com/watch?v=ZeVUOs_o1VE")
 
@@ -271,7 +371,4 @@ def sound_similarity(sound1, sound2):
 #sound1 = sound("cminor.mp3")
 #sound2 = sound("eminor.mp3")
 
-sound1 = sound("sol.mp3")
-sound2 = sound("back2.mp3")
-
-sound_similarity(sound1, sound2)
+compare_sound("output.mid", "test.mp3")
