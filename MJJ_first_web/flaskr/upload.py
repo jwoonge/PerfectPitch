@@ -3,7 +3,12 @@ import functools
 from flask import (Blueprint , flash , g, redirect, render_template, request, session, url_for,send_file)
 from werkzeug.security import check_password_hash,generate_password_hash
 from werkzeug.utils import secure_filename
-from . import soundfileproc
+import os
+import sys
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))))
+from PitchDetectModule import PitchDetection
+from PitchDetectModule import Sound_ds
+from PitchDetectModule import Score_ds
 
 
 from flaskr.db import get_db
@@ -21,10 +26,10 @@ def upload_file() :
       testname = f.filename
       if '.wav' in testname or '.mp3' in testname:
         f.save(secure_filename(f.filename))
-        soundproc = soundfileproc.sound(f.filename)
-        pcmvalue = str(soundproc.data)
+        pdp = PitchDetection.pd_processor()
+        pdp.do(Sound_ds.sound(f))
         route = 'flaskr/'
-        filename = 'pcmtxt.txt'
+        filename = 'detectedpitch.txt'
         file = open(route + filename, 'w')
         file.write(pcmvalue)
         file.close()

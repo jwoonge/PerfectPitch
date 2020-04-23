@@ -4,7 +4,12 @@ from flask import (Blueprint , flash , g, redirect, render_template, request, se
 from flask import send_file
 from werkzeug.security import check_password_hash,generate_password_hash
 from werkzeug.utils import secure_filename
-from . import soundfileproc
+import os
+import sys
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))))
+from PitchDetectModule import PitchDetection
+from PitchDetectModule import Sound_ds
+from PitchDetectModule import Score_ds
 
 from flaskr.db import get_db
 
@@ -20,16 +25,20 @@ def youtube_link() :
 
     if request.method == 'POST' :
       f = request.form['link']
-      soundproc = soundfileproc.sound(f)
-      pcmvalue = str(soundproc.data)
+      pdp = PitchDetection.pd_processor()
+      pdp.do(Sound_ds.sound (f))
+
+      filename = '../output.mid'
+      '''
+      result = pdp.do(Sound_ds.sound(f))
       route = 'flaskr/'
-      filename = 'pcmtxt.txt'
+      filename = 'detectedpitch.txt'
       file = open(route + filename, 'w')
-      file.write(pcmvalue)
+      file.write(result.str_pitches())
       file.close()
+      '''
       return send_file(filename,
-                       mimetype='text/txt',
-                       attachment_filename='downloaded_pcm_txt_file_name.txt',  # 다운받아지는 파일 이름.
+                         # 다운받아지는 파일 이름.
                        as_attachment=True)
 
 

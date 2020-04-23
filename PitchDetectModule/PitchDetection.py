@@ -1,12 +1,14 @@
-from Sound_ds import sound
-from Score_ds import score
+
 import os
 import math
+import sys
+sys.path.append(os.path.dirname(__file__))
 import numpy as np
 from scipy import signal
 from scipy import fftpack
 from scipy.ndimage import filters
-
+from Sound_ds import sound
+from Score_ds import score
 import time
 import matplotlib.pyplot as plt
 import seaborn as sns
