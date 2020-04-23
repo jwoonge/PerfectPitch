@@ -134,7 +134,8 @@ class pd_processor:
     def detect_pitches(self):
         peak_map = self.get_peak_map()
         self.octave_reduce(peak_map)
-        self.peak_to_pitches(peak_map)
+        #self.peak_to_pitches(peak_map)
+        self.peak_to_pitches2(peak_map)
 
     def get_spectrogram(self, pcm):
         start_t = time.time()
@@ -168,11 +169,54 @@ class pd_processor:
         end_t = time.time()
         print('\t Generating freq-to-pitch Complete', round(end_t-start_t,2),"sec")
         
-        spec = self.spec_normalization(spec)
+        #spec = self.spec_normalization(spec)
+        spec = self.detect_onset(spec)
 
         print("\t Generating Spectrogram Complete")
         print("\t sec per frame : ", self.time_resolution)
         return spec
+
+    def detect_onset(self,spec):
+        spec_maxes = []
+        for i in range(len(spec)):
+            spec_maxes.append(max(spec[i]))
+
+        sharpning_mask = [-3,-1,9,-1,-3]
+
+        sharpning = []
+        for i in range(len(spec_maxes)-5):
+            s = 0
+            for j in range(5):
+                s += spec_maxes[i+j]*sharpning_mask[j]
+            sharpning.append(s)
+
+        plt.plot(spec_maxes)
+        plt.show()
+
+        plt.plot(sharpning)
+        plt.show()
+
+        spec_maxes_gaussian = filters.gaussian_filter1d(spec_maxes,0.1)
+
+        self.onsets = []
+        for i in range(1,len(spec_maxes)-1):
+            if spec_maxes_gaussian[i] >spec_maxes_gaussian[i-1] and spec_maxes_gaussian[i] > spec_maxes_gaussian[i+1] and spec_maxes[i]>self.spec_max_th :
+                self.onsets.append(i)
+
+        print("음 갯수 :",len(self.onsets))
+
+        for i in range(len(spec)):
+            for j in range(len(spec[i])):
+                if not i in self.onsets:
+                    spec[i][j] = 0
+                else:
+                    spec[i][j] -= self.normalization_diff
+                    if spec[i][j]<0:
+                        spec[i][j] = 0
+                    else:
+                        spec[i][j] *= 127/spec_maxes[i]
+        return spec
+
         
     def spec_normalization(self, spec):
         frame_valid = []
@@ -208,23 +252,28 @@ class pd_processor:
         peaks = []
         for i in range(len(self.spec)):
             pairs = []
-            for j in range(len(self.spec[i])):
-                pairs.append([j,self.spec[i][j]])
-            pairs = sorted(pairs, key=lambda x:x[1], reverse=True)
-            pairs = pairs[0:num_top]
-            pairs = sorted(pairs, key=lambda x:x[0])
-            peaks.append(pairs)
+            if i in self.onsets:
+                for j in range(len(self.spec[i])):
+                    pairs.append([j,self.spec[i][j]])
+                pairs = sorted(pairs, key=lambda x:x[1], reverse=True)
+                pairs = pairs[0:num_top]  # paris = [10][2]
+                pairs = sorted(pairs, key=lambda x:x[0])
+                peaks.append(pairs)
+            else:
+                peaks.append([])
 
         ## concave인지 확인 ##
         peak_map = [[0 for y in range(88)] for x in range(len(self.spec))]
         for i in range(len(peaks)):
-            for j in range(len(peaks[i])):
-                peak_map[i][peaks[i][j][0]] = peaks[i][j][1]
+            if i in self.onsets:
+                for j in range(len(peaks[i])):
+                    peak_map[i][peaks[i][j][0]] = peaks[i][j][1]
         del peaks
         for i in range(len(peak_map)):
-            for j in range(1,len(peak_map[i])-1):
-                if peak_map[i][j]<peak_map[i][j-1] or peak_map[i][j]<peak_map[i][j+1]:
-                    peak_map[i][j] = 0
+            if i in self.onsets:
+                for j in range(1,len(peak_map[i])-1):
+                    if peak_map[i][j]<peak_map[i][j-1] or peak_map[i][j]<peak_map[i][j+1]:
+                        peak_map[i][j] = 0
         return peak_map
 
     def octave_reduce(self, peak_map):
@@ -281,6 +330,14 @@ class pd_processor:
         print("\t Removed by octave reducing : ",reduce_octave_count+reduce_misol_count,"pitches")
         print("\t\tRemoved same octaves : ",reduce_octave_count)
         print("\t\tRemoved misols : ", reduce_misol_count)
+
+    def peak_to_pitches2(self, peak_map):
+        for i in range(len(peak_map)):
+            if i in self.onsets:
+                for j in range(len(peak_map[i])):
+                    if peak_map[i][j]>self.val_th:
+                        self.result.push_note(j+9,i,i+10,100)
+        self.result.make_midi()
 
     def peak_to_pitches(self, peak_map):
         len_th = int(self.len_th_sec/self.time_resolution)
@@ -357,9 +414,9 @@ if __name__=='__main__':
     #test_sound2 = sound('test2.mp3')
     #test_sound3 = sound('https://www.youtube.com/watch?v=EeX8RWgq4Gs') #레헬른
     #test_sound3 = sound('bmajor.mp3')
-    #test_sound3 = sound('https://www.youtube.com/watch?v=6vo66K06wFU') #아르카나
+    test_sound3 = sound('https://www.youtube.com/watch?v=6vo66K06wFU') #아르카나
     #test_sound3 = sound('https://www.youtube.com/watch?v=22jE6FdYjxE') #왕벌
-    test_sound3 = sound('https://www.youtube.com/watch?v=w-4xH2DLv8M') #작은별
+    #test_sound3 = sound('https://www.youtube.com/watch?v=w-4xH2DLv8M') #작은별
     pdp = pd_processor()
     result = pdp.do(test_sound3)
     strin = result.str_pitches()
