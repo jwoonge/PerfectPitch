@@ -25,7 +25,17 @@ class score:
         self.sample_rate = sample_rate
         self.time_resolution = time_resolution
         #self.장단조
-        
+    
+    def str_pitches(self):
+        self.note_stack = sorted(self.note_stack, key=lambda x:x.start)
+        ret = ""
+        for i in range(len(self.note_stack)):
+            gye, oc = LUT(self.note_stack[i].pitch)
+            start = self.note_stack[i].start * self.time_resolution
+            end = self.note_stack[i].end * self.time_resolution
+            ret += str(gye) + str(oc) + "\t" + str(round(start,2)) + "\t" + str(round(end,2)) + "\n"
+        #print(ret)
+        return ret
 
     def make_score(self, frame_length):
         self.translate_stack(frame_length)

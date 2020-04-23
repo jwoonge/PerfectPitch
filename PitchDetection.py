@@ -97,7 +97,8 @@ class pd_processor:
         self.result = score(self.sample_rate, self.time_resolution)
         self.detect_pitches()
         #self.result.print_notes()
-        self.result.make_midi()
+        #self.result.make_midi()
+        return self.result
 
     def get_tuning_rate(self, spec):
         maxes = []
@@ -316,20 +317,17 @@ class pd_processor:
                         self.result.push_note(pitch,maxi,pitch_stack[i+1][2],value)
                         i+=2
 
-        print(del_count)
+        #print(del_count)
         #Show_Animation(peak_map,self.time_resolution*1000)
         
 
-
-        
-
-    
-#test_sound = sound('test.mp3')
-#test_sound2 = sound('test2.mp3')
-#test_sound3 = sound('https://www.youtube.com/watch?v=EeX8RWgq4Gs') #레헬른
-#test_sound3 = sound('bmajor.mp3')
-#test_sound3 = sound('https://www.youtube.com/watch?v=6vo66K06wFU') #아르카나
-#test_sound3 = sound('https://www.youtube.com/watch?v=22jE6FdYjxE') #왕벌
-test_sound3 = sound('https://www.youtube.com/watch?v=w-4xH2DLv8M') #작은별
-pdp = pd_processor()
-pdp.do(test_sound3)
+if __name__=='__main__':
+    #test_sound = sound('test.mp3')
+    #test_sound2 = sound('test2.mp3')
+    #test_sound3 = sound('https://www.youtube.com/watch?v=EeX8RWgq4Gs') #레헬른
+    #test_sound3 = sound('bmajor.mp3')
+    #test_sound3 = sound('https://www.youtube.com/watch?v=6vo66K06wFU') #아르카나
+    #test_sound3 = sound('https://www.youtube.com/watch?v=22jE6FdYjxE') #왕벌
+    test_sound3 = sound('https://www.youtube.com/watch?v=w-4xH2DLv8M') #작은별
+    pdp = pd_processor()
+    result = pdp.do(test_sound3)
