@@ -90,8 +90,15 @@ function uploadFile(){
         });
 }
 
+function hide_form(){
+
+  $("#upload_link").hide();
+  $('#upload_file').hide();
+  $('#download_midi').show();
+  $('#download_pitch').show();
 
 
+}
 
 
 

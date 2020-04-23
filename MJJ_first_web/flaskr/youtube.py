@@ -10,6 +10,7 @@ sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(os.path.abspath(
 from PitchDetectModule import PitchDetection
 from PitchDetectModule import Sound_ds
 from PitchDetectModule import Score_ds
+import zipfile
 
 from flaskr.db import get_db
 
@@ -26,18 +27,33 @@ def youtube_link() :
     if request.method == 'POST' :
       f = request.form['link']
       pdp = PitchDetection.pd_processor()
-      pdp.do(Sound_ds.sound (f))
 
-      filename = '../output.mid'
-      '''
+      filename_mid = '../output.mid'
+      filename_txt = 'detected_pitch.txt'
+      
       result = pdp.do(Sound_ds.sound(f))
-      route = 'flaskr/'
-      filename = 'detectedpitch.txt'
-      file = open(route + filename, 'w')
+      result.make_midi()
+      file = open(filename_txt, 'w')
       file.write(result.str_pitches())
       file.close()
-      '''
-      return send_file(filename,
+      output_zip = zipfile.ZipFile('output.zip', 'w')
+      output_zip.write('output.mid', compress_type=zipfile.ZIP_DEFLATED)
+      output_zip.write('detected_pitch.txt', compress_type=zipfile.ZIP_DEFLATED)
+
+
+      return send_file('../output.zip',
+                         # 다운받아지는 파일 이름.
+                       as_attachment=True)
+      
+     
+
+@bp.route('/download_pitch')
+def download_pitch() :
+
+    filename_txt = 'detected_pitch.txt'
+    
+    
+    return send_file(filename_txt,
                          # 다운받아지는 파일 이름.
                        as_attachment=True)
 

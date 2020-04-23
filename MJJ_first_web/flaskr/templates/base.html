@@ -57,7 +57,7 @@
                                  <label for="file" ><p class="text-white-75 font-weight-light mb-5"> Choose Your Piano Music File </p> </label>
                                  <input type="file" class="form-control" id="file" name="file" accept=".mp3,.wav">
                                  <br>
-                                 <button type="submit" class="btn btn-info" id = "upload_finish" >Upload</button>
+                                 <button type="submit" class="btn btn-info" id = "upload_finish"  onsubmit = hide_form() >Upload</button>
                              </div> </form>
 
                         <form id="upload_link" action="http://localhost:5000/youtube/translate_youtube_link" method="POST">
@@ -70,9 +70,15 @@
                                  <label for="link" ><p class="text-white-75 font-weight-light mb-5">Submit Youtube Piano Music link </p> </label>
                                  <input type="text" class="form-control" id="link" name="link">
                                  <br>
-                                 <button type="submit" class="btn btn-info" id ="link_finish">Submit</button>
+                                 <button type="submit" class="btn btn-info" id ="link_finish" onsubmit = hide_form()>Submit</button>
                              </div> </form>
+                        
+                        <button type="button" class="btn btn-info" id="download_pitch" onclick="location.href='{{url_for('youtube.download_pitch') }}'" >Download Detected Pitch List</button>
+                        <script>
+                            $('#download_pitch').hide();
+                        </script>
 
+                             
 
 
                     </div>
