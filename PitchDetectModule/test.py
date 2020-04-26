@@ -2,40 +2,41 @@ import math
 import matplotlib.pyplot as plt
 import numpy as np
 
-x = [0.01 * i for i in range(0,1000)]
-y_sin = [math.sin(j*math.pi) for j in x]
+def f_prime(a,b,c,x):
+    if x==a:
+        x+= math.e**(-64)
+    return -c/(x-a)
 
-y2_sin = [math.sin(j*math.pi * 2) for j in x]
+def g_prime(a,b,c,x):
+    if x==a:
+        x+= math.e**(-64)
+    return -c*log(x-a)-c*x/(x-a)+b
 
-y3_sin = [3* math.sin(j*math.pi) for j in x]
+def f(a,b,c,x):
+    if x==a:
+        x+= math.e**(-64)
+    return -c*log(x-a)+b
 
-sumy = []
-for i in range(1000):
-    sumy.append(3*y_sin[i] + y2_sin[i])
+def log(x):
+    if x!=0:
+        return np.log(x)
+    else:
+        return 10000
 
-def FFT(input_frame, frame_size):
-    NFFT = frame_size
-    Y = np.fft.fft(input_frame)/NFFT
-    Y = Y[range(math.trunc(NFFT/4))]
-    fft = 2*abs(Y)
-    return fft
+x_s = [0.1*i for i in range(11)]
+a_s = [-0.1*i for i in range(0,1000)]
+b_s = [0.1*i for i in range(-1000,1000)]
+c_s = [0.1*i for i in range(-100,100)]
 
-fft = FFT(y_sin, 1000)
-fft2 = FFT(y2_sin, 1000)
-fft3 = FFT(sumy, 1000)
-fft4 = FFT(y3_sin, 1000)
-print(fft)
-print(fft2)
-print(fft3)
-#print(fft4)
 
-plt.figure(figsize=(35,3))
-plt.plot(x,y_sin)
-plt.show()
-
-'''
-실험결과
-진폭이 두배가 되면 fft값도 두 배가 된다.
-3x+2y 를 하면 x 주파수가 3, y 주파수가 2가 제대로 나옴
-그러면 진폭-체감 소리 크기가 로그 스케일인가? 그럼 그거 적용해보자
-'''
+for a in a_s:
+    for b in b_s:
+        for c in c_s:
+            if abs(f(a,b,c,1)-0.08)<0.01 and abs(f(a,b,c,0.3)-1)<0.01:
+                count = 0
+                for x in x_s:
+                    count += 1
+                    if not(g_prime(a,b,c,x)>=0 and f_prime(a,b,c,x)<0):
+                        break
+                if count==len(x_s):
+                    print(a,b,c)
