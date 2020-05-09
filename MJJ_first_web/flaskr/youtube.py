@@ -41,7 +41,7 @@ def youtube_link() :
       output_zip.write('detected_pitch.txt', compress_type=zipfile.ZIP_DEFLATED)
 
 
-      return send_file('../output.zip',
+      return send_file('../detected_pitch.txt',
                          # 다운받아지는 파일 이름.
                        as_attachment=True)
       
