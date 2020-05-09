@@ -47,7 +47,7 @@
 
                         <button type="button" class="btn btn-info" id="upload_link_btn" >Extract From Youtube</button>
 
-                         <form id="upload_file" method="POST" enctype="multipart/form-data" action="http://localhost:5000/upload/upload" >
+                         <form id="upload_file" method="POST" enctype="multipart/form-data" action="{{url_for('upload.upload_file') }}" >
                              <br>
                              <br>
                              <script>
@@ -60,7 +60,7 @@
                                  <button type="submit" class="btn btn-info" id = "upload_finish"  onsubmit = hide_form() >Upload</button>
                              </div> </form>
 
-                        <form id="upload_link" action="http://localhost:5000/youtube/translate_youtube_link" method="POST">
+                        <form id="upload_link" action="{{url_for('youtube.youtube_link') }}" method="POST">
                             <br>
                              <br>
                              <script>
