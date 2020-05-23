@@ -27,21 +27,23 @@ def youtube_link() :
     if request.method == 'POST' :
       f = request.form['link']
       pdp = PitchDetection.pd_processor()
-
-      filename_mid = '../output.mid'
-      filename_txt = 'detected_pitch.txt'
+      username = str(request.environ.get('HTTP_X_REAL_IP', request.remote_addr))
+      username = username.replace('.','')
+      print(username)
+      filename_mid = username+'.mid'
+      filename_txt = username + '_detected_pitch.txt'
       
-      result = pdp.do(Sound_ds.sound(f))
-      result.make_midi()
+      result = pdp.do(Sound_ds.sound(f,username))
+      result.make_midi(username)
       file = open(filename_txt, 'w')
       file.write(result.str_pitches())
       file.close()
-      output_zip = zipfile.ZipFile('output.zip', 'w')
-      output_zip.write('output.mid', compress_type=zipfile.ZIP_DEFLATED)
-      output_zip.write('detected_pitch.txt', compress_type=zipfile.ZIP_DEFLATED)
+      output_zip = zipfile.ZipFile(username + 'output.zip', 'w')
+      output_zip.write(filename_mid, compress_type=zipfile.ZIP_DEFLATED)
+      output_zip.write(filename_txt, compress_type=zipfile.ZIP_DEFLATED)
 
 
-      return send_file('../detected_pitch.txt',
+      return send_file('../'+filename_txt,
                          # 다운받아지는 파일 이름.
                        as_attachment=True)
       

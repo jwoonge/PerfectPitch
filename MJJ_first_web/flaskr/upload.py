@@ -24,12 +24,14 @@ def upload_file() :
 
     if request.method == 'POST' :
       f = request.files['file']
+      username = str(request.environ.get('HTTP_X_REAL_IP', request.remote_addr))
+      username = username.replace('.', '')
       testname = f.filename
       if '.wav' in testname or '.mp3' in testname:
         f.save(secure_filename(f.filename))
         pdp = PitchDetection.pd_processor()
-        filename_mid = '../output.mid'
-        filename_txt = 'detected_pitch.txt'
+        filename_mid = username + '.mid'
+        filename_txt = username + '_detected_pitch.txt'
         
         result = pdp.do(Sound_ds.sound(f.filename))
         result.make_midi()
