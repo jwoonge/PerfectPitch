@@ -1,20 +1,10 @@
-가로축 threshold : 현재와 전프레임의 비율 비교해서 2/3~2 사이 해보기
-	line 203, 	line 276
-세로축 threshold : normalization rate에 반비례 해서 줘보기
-	line 369
-
-PitchDetection_burning이 최신 버전이고
-
-  Detect_pitches : start, end 를 찍는데, 가로 threshold 너무 낮게 주면 솔이 1800프레임까지 나왔음
-			start~end 범위 너무 넓어져서 음이 하나밖에 안 나온다
-			그렇다고 너무 높게 주면 작은 소리가 안나온다
-			그럼 start 찍는 범위는 낮게주고 end 찍는범위는 높게주면??
-			line 203의 concave_th는 낮게, line205의 concave_th는 높게 주면서 line205의 조건문을
-			start보단 높은데 max가 end_th보다 낮은 경우 예외처리를 해줍시다
+accord_ds.py
+	0.5박 넣기
+	interval 범위지정해서 줘보기
+	dtw dist func 바꿔서 tempo 비율 일정하게 해보기
 
 
-  Detect_pitches_jiho : 잡음이 잡혀 (세로에서) 원인 : 가로축에서 아예 모든 concave를 잡기 때문.
-				해결방안 : 세로축 threshold를 완벽하게 하던가, 가로축 threshold 해결
+LilyNotation.py
+	샵플랫내츄럴 구현
+	바뀐 자료구조로 리빌딩
 
-
-의문. 어차피 세로 threshold를 local max 포인트의 높낮이에 따라 비율로 조절할거면 가로 threshold도 해당 pitch의 fft value로 함께 조정할 수 있지 않은가?
