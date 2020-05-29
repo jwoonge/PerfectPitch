@@ -4,11 +4,15 @@ from collections import Counter
 from dtw import dtw
 import numpy as np
 from matplotlib import pyplot as plt
+from LilyNotation import *
+import os
+import sys
+import subprocess
 
 class note:
     def __init__(self, pitch, start, velocity):
         self.pitch = pitch
-        self.start = start
+        self.time = start
         self.velocity = velocity
 
 class accord:
@@ -28,16 +32,16 @@ class accord:
 
 
     def calc_avg_start(self):
-        self.start = 0
+        self.time = 0
         for note in self.notes:
-            self.start += note.start
+            self.time += note.time
         self.start /= len(self.notes)
     
     def calc_first_start(self):
-        self.start = self.notes[0].start
+        self.time = self.notes[0].time
         for note in self.notes:
-            if note.start < self.start:
-                self.start = note.start
+            if note.time < self.time:
+                self.time = note.time
             
 
 class score:
@@ -55,7 +59,7 @@ class score:
             tmp_accord.push_to_accord(tnote)
             self.accords.append(tmp_accord)
 
-        elif abs(tnote.start - self.accords[-1].notes[-1].start) >= self.accord_th:
+        elif abs(tnote.time - self.accords[-1].notes[-1].time) >= self.accord_th:
             tmp_accord = accord()
             tmp_accord.push_to_accord(tnote)
             self.accords.append(tmp_accord)
@@ -76,8 +80,8 @@ class score:
             accord_it = self.accords[i]
             accord_left = accord()
             accord_right = accord()
-            accord_left.start = self.accords[i].start
-            accord_right.start = self.accords[i].start
+            accord_left.time = self.accords[i].time
+            accord_right.time = self.accords[i].time
 
             for j in range(len(accord_it.notes)):
                 note_it = accord_it.notes[j]
@@ -96,16 +100,16 @@ class score:
         print("todo: mark_beat")
         intervals = []
         for i in range(1,len(self.accords)):
-            intervals.append(int(self.accords[i].start - self.accords[i-1].start))
+            intervals.append(int(self.accords[i].time - self.accords[i-1].time))
         cnt = Counter(intervals)
         self.interval = cnt.most_common(1)[0][0]
         ## interval 구할 때 범위 지정해서 줘보자
         metronome = []
-        for i in range(int((self.accords[-1].start-self.accords[0].start) / self.interval)+1):
+        for i in range(int((self.accords[-1].time-self.accords[0].time) / self.interval)+1):
             metronome.append(i * self.interval)
         myframes = [0]
         for i in range(1,len(self.accords)):
-            tmp = self.accords[i].start - self.accords[0].start
+            tmp = self.accords[i].time - self.accords[0].time
             myframes.append(tmp)
         
         metronome = np.array(metronome)
@@ -125,13 +129,23 @@ class score:
             print(self.accords[i].beat - self.accords[i-1].beat, end=" ")
         
         
-
-
-    def make_score(self):
+    def make_score(self, filename='test', title='test'):
         self.push_finished()
+        self.bar = 4
+        self.key = 'C'
+        lily_string = LilyNotation.LilyNotation(self.accords_left, self.accords_right, self.bar, self.key, title)
+        try:
+            f=open(filename+".ly","w")
+            f.write(lily_string)
+            f.close()
+        except:
+            print("except")
+        p = subprocess.Popen(filename+".ly", shell=True).wait()
+        os.remove(filename+".ly")
+        os.remove(filename+".log")
+
 
     def make_midi(self, filename='output'):
-
         self.push_finished()
 
         midi = pretty_midi.PrettyMIDI(initial_tempo = 120)
@@ -139,7 +153,7 @@ class score:
 
         for i in range(len(self.accords)):
             accord_it = self.accords[i]
-            start_time = accord_it.start * self.time_resolution
+            start_time = accord_it.time * self.time_resolution
             end_time = start_time + 0.25
             velocity = accord_it.velocity
             for j in range(len(accord_it.notes)):
@@ -213,7 +227,8 @@ class score:
                     velocity = int(row[3])
                     self.push_note(pitch, start, end, velocity)
 
-result = score(0)
-result.read_csv('results/아르카나.csv')
-result.make_midi('results/아르카나')
-result.make_midi_beat('results/아르카나비트')
+if __name__=='__main__':
+    result = score(0)
+    result.read_csv('results/아르카나.csv')
+    result.make_midi('results/아르카나')
+    result.make_midi_beat('results/아르카나비트')
