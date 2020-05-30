@@ -1,3 +1,10 @@
+'''
+beat 누적으로 계산한것
+
+
+'''
+
+
 import pretty_midi
 import csv
 from collections import Counter
@@ -17,10 +24,13 @@ class note:
 
 class accord:
     def __init__(self):
+        self.vice = False
         self.notes = []
-        self.beat = -1
+        self.beat = 0
         self.origin_frames = -1
         self.velocity = 0
+        self.time = 0
+        self.beat_ac = 0
 
     def push_to_accord(self, note):
         self.notes.append(note)
@@ -30,12 +40,11 @@ class accord:
             self.velocity += note.velocity
         self.velocity /= len(self.notes)
 
-
     def calc_avg_start(self):
         self.time = 0
         for note in self.notes:
             self.time += note.time
-        self.start /= len(self.notes)
+        self.time /= len(self.notes)
     
     def calc_first_start(self):
         self.time = self.notes[0].time
@@ -68,14 +77,20 @@ class score:
             self.accords[-1].push_to_accord(tnote)
 
     def push_finished(self):
+        self.push_note(-1, self.accords[-1].notes[-1].time+320, self.accords[-1].notes[-1].time+320, -1)
         for i in range(len(self.accords)):
             self.accords[i].calc_avg_start()
             #self.accords[i].calc_first_start()
             self.accords[i].calc_avg_velocity()
-        self.divide_hands()
         self.mark_beat()
+        self.divide_hands()
+
+        
 
     def divide_hands(self):
+        del self.accords[-1]
+        self.accords_left = []
+        self.accords_right = []
         for i in range(len(self.accords)):
             accord_it = self.accords[i]
             accord_left = accord()
@@ -85,64 +100,139 @@ class score:
 
             for j in range(len(accord_it.notes)):
                 note_it = accord_it.notes[j]
-                if note_it.pitch <= 50:
+                if note_it.pitch <= 38:
                     accord_left.push_to_accord(note_it)
                 else:
                     accord_right.push_to_accord(note_it)
 
             if len(accord_left.notes)>0:
                 self.accords_left.append(accord_left)
+                self.accords_left[-1].beat = accord_it.beat
+                if len(accord_right.notes)==0:
+                    rest = accord()
+                    rest.vice = True
+                    rest.pitch = -1
+                    rest.beat = accord_it.beat
+                    self.accords_right.append(rest)
             if len(accord_right.notes)>0:
                 self.accords_right.append(accord_right)
+                self.accords_right[-1].beat = accord_it.beat
+                if len(accord_left.notes)==0:
+                    rest = accord()
+                    rest.vice = True
+                    rest.pitch = -1
+                    rest.beat = accord_it.beat
+                    self.accords_left.append(rest)
 
+    def get_interval(self, accords):
+        pitches_starts = [[] for i in range(88)]
+        for i in range(len(accords)-1):
+            for j in range(len(accords[i].notes)):
+                pitches_starts[accords[i].notes[j].pitch-8].append(accords[i].notes[j].time)
+        pitches_diff = []
+        for i in range(88):
+            for j in range(len(pitches_starts[i])-1):
+                diff = pitches_starts[i][j+1] - pitches_starts[i][j]
+                pitches_diff.append(diff)
+
+        distances = []
+        ranges = [0.01*x for x in range(800,3000)]
+        for interval in ranges:
+            distance = 0
+            for diff in pitches_diff:
+                left = abs(diff / interval - round(diff/interval))
+                distance += left / np.sqrt(interval)
+            distances.append(distance)
+        interval = np.argmin(distances)/100 + 8
+        return interval
 
     def mark_beat(self):
-        print("todo: mark_beat")
-        intervals = []
-        for i in range(1,len(self.accords)):
-            intervals.append(int(self.accords[i].time - self.accords[i-1].time))
-        cnt = Counter(intervals)
-        self.interval = cnt.most_common(1)[0][0]
-        ## interval 구할 때 범위 지정해서 줘보자
-        metronome = []
-        for i in range(int((self.accords[-1].time-self.accords[0].time) / self.interval)+1):
-            metronome.append(i * self.interval)
-        myframes = [0]
-        for i in range(1,len(self.accords)):
-            tmp = self.accords[i].time - self.accords[0].time
-            myframes.append(tmp)
-        
-        metronome = np.array(metronome)
-        myframes = np.array(myframes)
+        ############ 
+        n = 1
+        temp = int(self.accords[-1].time/n)
+        bars = [[] for x in range(n+5)]
+        indexes = [[] for x in range(n+5)]
+        for i in range(len(self.accords)):
+            bars[int(self.accords[i].time/temp)].append(self.accords[i])
+            indexes[int(self.accords[i].time/temp)].append(i)
+        while(True):
+            if len(indexes[-1])>0:
+                break
+            else:
+                del bars[-1]
+                del indexes[-1]
 
-        euclidean_norm = lambda x, y : np.square(x-y)
-        d, cost_matrix, acc_cost_matrix, path = dtw(myframes, metronome, dist=euclidean_norm)
-        #print(path)
+        for index_bar in range(len(bars)):
+            interval = self.get_interval(bars[index_bar])
+            print(interval)
+            bar_time_start = bars[index_bar][0].time #10
 
-        print("\t interval: ",self.interval)
+            last_beat_from_start = 0
+            for index_accord in range(len(bars[index_bar])-1):
+                time_from_start = bars[index_bar][index_accord+1].time - bar_time_start
+                beat_from_start = self.my_round(time_from_start / interval) #이걸 0.5단위로
+                beat = beat_from_start - last_beat_from_start
+                if beat>=3:
+                    print(time_from_start)
+                #print(beat, end=" ")
+                if beat != 0:
+                    beat = int(16/beat)
+                    last_beat_from_start = beat_from_start
+                self.accords[indexes[index_bar][index_accord]].beat = beat
+                
+            
+            if index_bar < len(bars)-1:
+                time_from_start = bars[index_bar+1][0].time - bar_time_start
+                beat_from_start = self.my_round(time_from_start / interval)
+                beat = beat_from_start - last_beat_from_start
+                if beat != 0:
+                    beat = int(16/beat)
+                self.accords[indexes[index_bar][-1]].beat = beat
 
-        for i in range(len(path[0])):
-            self.accords[path[0][i]].beat = path[1][i]+1
-            ###여따가 만약 다른 어코드가 같은 매트로놈으로 가는 경우, 0.5박도 넣어야 함
+        self.interval = 23
 
-        for i in range(1,len(self.accords)):
-            print(self.accords[i].beat - self.accords[i-1].beat, end=" ")
-        
+    def my_round(self, input):
+        if abs(input-round(input)) < 0.25:
+            return round(input)
+        else:
+            if input-round(input)>0:
+                return round(input)+0.5
+            else:
+                return round(input)-0.5
+
+    def get_near_beat(self,frame):
+        if frame > 32:
+            return round(frame/16)*16
+        elif frame > 16:
+            return round(frame/8)*8
+        elif frame > 8:
+            return round(frame/4)*4
+        elif frame > 4:
+            return round(frame/2)*2
+        elif frame <= 4 and frame>=0.75:
+            return round(frame)
+        elif frame<0.75 and frame>0.25:
+            return 0.5
+        else:
+            return 0
+            #return round(frame)
+
         
     def make_score(self, filename='test', title='test'):
         self.push_finished()
+
         self.bar = 4
         self.key = 'C'
-        lily_string = LilyNotation.LilyNotation(self.accords_left, self.accords_right, self.bar, self.key, title)
+        lily_string = lily_notation(self.accords_left, self.accords_right, self.bar, self.key, title, midi=0)
         try:
             f=open(filename+".ly","w")
             f.write(lily_string)
             f.close()
         except:
             print("except")
-        p = subprocess.Popen(filename+".ly", shell=True).wait()
-        os.remove(filename+".ly")
-        os.remove(filename+".log")
+        #p = subprocess.Popen(filename+".ly", shell=True).wait()
+        #os.remove(filename+".ly")
+        #os.remove(filename+".log")
 
 
     def make_midi(self, filename='output'):
@@ -172,9 +262,10 @@ class score:
         midi = pretty_midi.PrettyMIDI(initial_tempo = 120)
         piano = pretty_midi.Instrument(program=1)
 
+        start_time = 3
         for i in range(len(self.accords)):
             accord_it = self.accords[i]
-            start_time = 3 + accord_it.beat*self.interval*self.time_resolution
+            start_time = start_time + accord_it.beat*self.interval*self.time_resolution
             end_time = start_time + 0.25
             #velocity = accord_it.velocity
             velocity=100
@@ -186,7 +277,7 @@ class score:
         midi.instruments.append(piano)
         midi.write(filename+'.mid')
         print("midi generated")
-    '''
+    
     def make_csv(self,filename) :
         self.note_stack = sorted(self.note_stack, key=lambda x:x.start)
         csv.register_dialect(
@@ -202,7 +293,7 @@ class score:
             thedatawriter.writerow([self.time_resolution])
             for row in self.note_stack:
                 thedatawriter.writerow([row.pitch,row.start,row.end,row.velocity])
-    '''
+    
     def read_csv(self, filename) :
         csv.register_dialect(
             'mydialect',
@@ -228,7 +319,25 @@ class score:
                     self.push_note(pitch, start, end, velocity)
 
 if __name__=='__main__':
-    result = score(0)
-    result.read_csv('results/아르카나.csv')
-    result.make_midi('results/아르카나')
-    result.make_midi_beat('results/아르카나비트')
+    
+    #result = score(0)
+    #result.read_csv('results/아르카나.csv')
+    #result.make_midi_beat('results/작은별비트')
+    
+
+    
+    result = score(0.05)
+    result.push_note(55,102,4,100)
+    result.push_note(57,139,4,100)
+    result.push_note(27,160,4,100)
+    result.push_note(57,179,4,100)
+    result.push_note(59,199,4,100)
+    result.push_note(51,200,4,100)
+    result.push_note(61,211,4,100)
+    result.push_note(63,220,4,100)
+    result.push_note(57,264,4,100)
+    result.push_note(67,282,4,100)
+    
+    result.make_score()
+    
+    

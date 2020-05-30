@@ -1,10 +1,8 @@
 accord_ds.py
-	0.5박 넣기
-	interval 범위지정해서 줘보기
-	dtw dist func 바꿔서 tempo 비율 일정하게 해보기
-
-
+	
+	
 LilyNotation.py
-	샵플랫내츄럴 구현
-	바뀐 자료구조로 리빌딩
+	장단조 구현
 
+Pitchdetection
+	total_energy 구할때 세제곱으로distance로 해보기
