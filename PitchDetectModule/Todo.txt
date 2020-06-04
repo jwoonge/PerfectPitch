@@ -5,4 +5,6 @@ LilyNotation.py
 	장단조 구현
 
 Pitchdetection
-	total_energy 구할때 세제곱으로distance로 해보기
+	첫 음 못 잡는 문제 발생
+	convex와 concave로 보는데, 첫음구간에는 convex가 없음
+	0.15 height 준 것 아르카나에서는 동작 안함, 전체의 비율로 보도록 해야함

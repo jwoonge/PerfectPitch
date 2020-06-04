@@ -129,7 +129,7 @@ class score:
                 pitches_diff.append(diff)
 
         distances = []
-        ranges = [0.01*x for x in range(800,3000)]
+        ranges = [0.01*x for x in range(800,7000)]
         for interval in ranges:
             distance = 0
             for diff in pitches_diff:
@@ -155,6 +155,7 @@ class score:
                 del bars[-1]
                 del indexes[-1]
 
+
         for index_bar in range(len(bars)):
             interval = self.get_interval(bars[index_bar])
             print('interval:',interval)
@@ -176,8 +177,8 @@ class score:
                 self.accords[indexes[index_bar][-1]].beat = 1
 
             #print("\n-----------------------\n")
-        #for i in range(len(self.accords)):
-        #    print(self.accords[i].beat, end=" ")
+        for i in range(len(self.accords)):
+            print(self.accords[i].beat, end=" ")
         self.interval = 23
 
     def get_near_beat(self,frame):
@@ -245,7 +246,7 @@ class score:
         start_time = 3
         for i in range(len(self.accords)):
             accord_it = self.accords[i]
-            start_time = start_time + accord_it.beat*self.interval*self.time_resolution
+            start_time = start_time + 16/(accord_it.beat)*self.interval*self.time_resolution
             end_time = start_time + 0.25
             #velocity = accord_it.velocity
             velocity=100
@@ -259,7 +260,6 @@ class score:
         print("midi generated")
     
     def make_csv(self,filename) :
-        self.note_stack = sorted(self.note_stack, key=lambda x:x.start)
         csv.register_dialect(
             'mydialect',
             delimiter = ',',
@@ -271,8 +271,9 @@ class score:
         with open(filename, 'w', newline='') as mycsvfile:
             thedatawriter = csv.writer(mycsvfile, dialect='mydialect')
             thedatawriter.writerow([self.time_resolution])
-            for row in self.note_stack:
-                thedatawriter.writerow([row.pitch,row.start,row.end,row.velocity])
+            for accord in self.accords:
+                for note in accord.notes:
+                    thedatawriter.writerow([note.pitch,note.time,note.velocity])
     
     def read_csv(self, filename) :
         csv.register_dialect(
@@ -294,15 +295,14 @@ class score:
                 else :
                     pitch = int(row[0])
                     start = int(row[1])
-                    end = int(row[2])
-                    velocity = int(row[3])
-                    self.push_note(pitch, start, end, velocity)
+                    velocity = int(row[2])
+                    self.push_note(pitch, start, start+25, velocity)
 
 if __name__=='__main__':
     
-    #result = score(0)
-    #result.read_csv('results/아르카나.csv')
-    #result.make_midi_beat('results/작은별비트')
+    result = score(0)
+    result.read_csv('작은별진짜.csv')
+    result.make_midi_beat('작은별진짜')
     
 
     '''
@@ -323,7 +323,7 @@ if __name__=='__main__':
     '''
     
 
-
+    '''
     result = score(0.05)
     result.push_note(55,102,4,100) #2
     #result.push_note(57,20,4,100)
@@ -337,5 +337,5 @@ if __name__=='__main__':
     result.push_note(57,264,4,100) #1
     result.push_note(67,282,4,100)
     result.make_score()
-    
+    '''
     

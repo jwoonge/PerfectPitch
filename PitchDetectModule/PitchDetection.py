@@ -181,15 +181,21 @@ class pd_processor:
 
 
     def detect_pitch(self):
-        frame_energy = np.sum(self.spec, axis=1)
-        total_concaves, _ = signal.find_peaks(frame_energy, distance=8, prominence=3, height=10)
-        
+
+        frame_energy = np.sum((self.spec**4)/100000000, axis=1)
+        total_concaves, _ = signal.find_peaks(frame_energy, distance=5, height=0.15)
+
+        plt.plot(frame_energy)
+        plt.plot(total_concaves, frame_energy[total_concaves], 'ob')
+        plt.show()
+
         valid_peaks = []
         start_ends = []
         for i in range(88):
             convex, _ = signal.find_peaks(max(self.spec[:,i])-self.spec[:,i], prominence=2)
-            peaks, _ = signal.find_peaks(self.spec[:,i], prominence = 450/(i+40))
+            peaks, _ = signal.find_peaks(self.spec[:,i], prominence = 4) #450/(i+40)
 
+            np.insert(convex,0,0)
             valid_peak = []
             start_end = []
             for j in range(len(peaks)):
@@ -290,15 +296,18 @@ class pd_processor:
 
 
 
-
-
-
 pdp = pd_processor()
 #test_sound = sound('https://www.youtube.com/watch?v=Hf2MFBz4S_g') #라캄파넬라
 #test_sound = sound('https://www.youtube.com/watch?v=22jE6FdYjxE') #왕벌
-#test_sound = sound('https://www.youtube.com/watch?v=6vo66K06wFU') #아르카나
+test_sound = sound('https://www.youtube.com/watch?v=6vo66K06wFU') #아르카나
 #test_sound = sound('https://www.youtube.com/watch?v=w-4xH2DLv8M') # 작은별
-test_sound = sound('https://www.youtube.com/watch?v=cqOY7LF_QrY') #관짝
+#test_sound = sound('https://www.youtube.com/watch?v=cqOY7LF_QrY') #관짝
 result = pdp.do(test_sound)
-#result.make_midi()
-result.make_score()
+result.make_csv('작은별진짜.csv')
+result.make_midi()
+result.make_midi_beat()
+#result.make_score()
+
+
+
+#파  파도    파도솔  파도솔레    파도솔레라        15
