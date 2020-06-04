@@ -73,32 +73,146 @@ $("#upload_link").show();
 
 });
 
-function uploadFile(){
-    var form = $('#upload_file')[0];
-    var formData = new FormData(form);
-    formData.append("fileObj", $("#files")[0].files[0]);
+$("#show_pdf").click(function javascript_onclick(){
 
-    $.ajax({
-        url: 'upload.upload_file',
-                processData: false,
-                contentType: false,
-                data: formData,
-                type: 'POST',
-                success: function(result){
-                    alert("업로드 성공!!");
-                }
-        });
-}
+$("#results").show();
+$("#home_btn").show();
 
+
+
+
+});
+
+$("#home_btn").click(function javascript_onclick(){
+
+  $("#results").hide();
+  $("#home_btn").hide();
+  $("#play_pdf").hide();
+  $("#show_pdf").hide();
+  $("#upload_link_btn").show();
+  $("#upload_file_btn").show();
+  
+  
+  
+  
+  });
 function hide_form(){
 
   $("#upload_link").hide();
   $('#upload_file').hide();
-  $('#download_midi').show();
-  $('#download_pitch').show();
+
 
 
 }
 
 
+/**
+ * Get the user IP throught the webkitRTCPeerConnection
+ * @param onNewIP {Function} listener function to expose the IP locally
+ * @return undefined
+ */
+function getUserIP(onNewIP) { //  onNewIp - your listener function for new IPs
+  //compatibility for firefox and chrome
+  var myPeerConnection = window.RTCPeerConnection || window.mozRTCPeerConnection || window.webkitRTCPeerConnection;
+  var pc = new myPeerConnection({
+      iceServers: []
+  }),
+  noop = function() {},
+  localIPs = {},
+  ipRegex = /([0-9]{1,3}(\.[0-9]{1,3}){3}|[a-f0-9]{1,4}(:[a-f0-9]{1,4}){7})/g,
+  key;
 
+  function iterateIP(ip) {
+      if (!localIPs[ip]) onNewIP(ip);
+      localIPs[ip] = true;
+  }
+
+   //create a bogus data channel
+  pc.createDataChannel("");
+
+  // create offer and set local description
+  pc.createOffer().then(function(sdp) {
+      sdp.sdp.split('\n').forEach(function(line) {
+          if (line.indexOf('candidate') < 0) return;
+          line.match(ipRegex).forEach(iterateIP);
+      });
+      
+      pc.setLocalDescription(sdp, noop, noop);
+  }).catch(function(reason) {
+      // An error occurred, so handle the failure to connect
+  });
+
+  //listen for candidate events
+  pc.onicecandidate = function(ice) {
+      if (!ice || !ice.candidate || !ice.candidate.candidate || !ice.candidate.candidate.match(ipRegex)) return;
+      ice.candidate.candidate.match(ipRegex).forEach(iterateIP);
+  };
+}
+
+// Usage
+
+getUserIP(function(ip){
+  document.getElementById("ip").innerHTML = 'Got your IP ! : '  + ip + " | verify in http://www.whatismypublicip.com/";
+});
+
+
+$("#link_finish").click(function (event) {
+
+  //preventDefault 는 기본으로 정의된 이벤트를 작동하지 못하게 하는 메서드이다. submit을 막음
+  event.preventDefault();
+
+  // Get form
+  var form = $('#upload_link')[0];
+
+// Create an FormData object 
+  var data = new FormData(form);
+  hide_form();
+// disabled the submit button
+  $("#link_finish").prop("disabled", true);
+  $("#upload_link_btn").hide();
+  $("#upload_file_btn").hide();
+  $("#progress_notice").show();
+  $("#progress").show();
+
+  $.ajax({
+      type: "POST",
+      enctype: 'multipart/form-data',
+      url: "youtube/translate_youtube_link",
+      data: data,
+      processData: false,
+      contentType: false,
+      cache: false,
+      xhrFields: {
+        responseType : 'blob'
+      },
+      timeout: 600000,
+
+  }).done(function(response)
+  {
+
+
+      $("#progress_notice").hide();
+      $("#show_pdf").show()
+      $("#play_pdf").show()
+      var blob=new Blob([response]);
+      var link=document.createElement('a');
+      link.href=window.URL.createObjectURL(blob);
+      //link.href="youtube/translate_youtube_link";
+      link.download="OUTPUT.mid";
+      link.click();
+      //location.href = "youtube/translate_youtube_link";
+      //location.download = 'file.mid';
+      //location.click();
+      $("#progress").hide();
+      alert("Finish!");
+      $("#link_finish").prop("disabled", false);
+     
+    
+
+
+
+  });
+
+
+
+});

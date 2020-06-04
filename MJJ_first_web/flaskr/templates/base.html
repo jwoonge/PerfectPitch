@@ -18,6 +18,7 @@
         <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
 
     </head>
+    
     <body id="page-top">
         <!-- Navigation-->
         <nav class="navbar navbar-expand-lg navbar-light fixed-top py-3" id="mainNav">
@@ -34,6 +35,12 @@
         <!-- Masthead-->
         <header class="masthead">
             <div class="container h-100">
+
+
+    
+                  
+
+                  
                 <div class="row h-100 align-items-center justify-content-center text-center">
                     <div class="col-lg-10 align-self-end">
                         <h1 class="text-uppercase text-white font-weight-bold">Translate Your Piano Music or Youtube Piano Music to Sheet Music</h1>
@@ -60,7 +67,7 @@
                                  <button type="submit" class="btn btn-info" id = "upload_finish"  onsubmit = hide_form() >Upload</button>
                              </div> </form>
 
-                        <form id="upload_link" action="{{url_for('youtube.youtube_link') }}" method="POST">
+                        <form id="upload_link"  method="POST" action="{{url_for('youtube.youtube_link') }}" >
                             <br>
                              <br>
                              <script>
@@ -70,18 +77,97 @@
                                  <label for="link" ><p class="text-white-75 font-weight-light mb-5">Submit Youtube Piano Music link </p> </label>
                                  <input type="text" class="form-control" id="link" name="link">
                                  <br>
-                                 <button type="submit" class="btn btn-info" id ="link_finish" onsubmit = hide_form()>Submit</button>
-                             </div> </form>
+                                 <button type="submit" class="btn btn-info" id ="link_finish" >Submit</button>
+                             </div> 
+                        </form>
+
+                        <div id = "progress_notice"><p p class="text-white-75 font-weight-light mb-5" >Now Processing...</p></div>
+                        <div class="spinner-border text-info" role="status" id="progress">
+                            
+                            
+                            <span class="sr-only">Loading...</span>
+                        </div>
+                            <script>  
+                                $("#progress_notice").hide();
+                                $("#progress").hide();
+                              </script>
                         
-                        <button type="button" class="btn btn-info" id="download_pitch" onclick="location.href='{{url_for('youtube.download_pitch') }}'" >Download Detected Pitch List</button>
+                        <button type="button" class="btn btn-info" id="show_pdf"  >Show Sheet Music</button>
+                        
                         <script>
-                            $('#download_pitch').hide();
+                            $('#show_pdf').hide();
+                        </script>
+                        <button type="button" class="btn btn-info" id="play_pdf"  >Play Sheet Music</button>
+                        <script>
+                            $('#play_pdf').hide();
+                        </script>
+                        <button type="button" class="btn btn-info" id="home_btn"  >Home</button>
+                        <script>
+                            $('#home_btn').hide();
                         </script>
 
+                        <!--onclick="location.href='{{url_for('youtube.download_pitch') }}'"  onsubmit = hide_form() action="{{url_for('youtube.youtube_link') }}"   -->
+
+                        <style>
+                            .pdfobject-container {
+                                position:relative;
+                                top:75%;
+                                left:25%;
+                                width: 100%;
+                                max-width: 400px;
+                                height: 400px;
+                               
+                                overflow : scroll;
+                            }
+                             
+                            .pdfobject { border: solid 1px #666; }
+                            #results { padding: 1rem; }
+                            .hidden { display: none; }
+                            .success { color: #4F8A10;  }
+                            .fail { color: #D8000C; background-color: #FFBABA; }
+                            </style>
+                        <div  id='results' >
+                            <script>$('#results').hide()</script>
+                            <div  style='overflow:scroll' id='pdf'></div>
+                            
+                            
+
+
+
+                        </div>
+                        <script type="text/javascript" src="http://jsgetip.appspot.com/?getip">
+                        </script>
+                        <script src="../static/js/pdfobject.min.js"></script>
+                            <script>
+                            var options = {
+                                pdfOpenParams: {
+                                    navpanes: 0,
+                                    toolbar: 0,
+                                    statusbar: 0,
+                                    view:"FitV",
+                                    pagemode:"thumbs",
+                                    page: 2
+                                },
+                                forcePDFJS: true,
+                                PDFJS_URL:"../static/js/pdfjs/web/viewer.html"
+                            };
+                             
+                            
+                            var user_raw=new String(getip());
+                           
+                            var user_name = user_raw.replace(/\./gi,'');
+                            console.log(user_name)
+                            var myPDF = PDFObject.embed("../../../assets/pdf/"+user_name+".pdf","#pdf", options);
+                             
+                            var el = document.querySelector("#results");
+                            el.setAttribute("class", (myPDF) ?"success" :"fail");
+                            
+                            </script>
                              
 
 
                     </div>
+
                 </div>
             </div>
         </header>
