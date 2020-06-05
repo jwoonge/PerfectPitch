@@ -8,6 +8,8 @@ from LilyNotation import *
 import os
 import sys
 import subprocess
+from scipy.ndimage import filters
+from scipy import signal
 
 def get_interval_in_pitches(accords):
     pitches_starts = [[] for i in range(88)]
@@ -46,6 +48,7 @@ class accord:
         self.velocity = 0
         self.time = 0
         self.beat_ac = 0
+        self.tempo = 0
 
     def push_to_accord(self, note):
         self.notes.append(note)
@@ -54,6 +57,7 @@ class accord:
         for note in self.notes:
             self.velocity += note.velocity
         self.velocity /= len(self.notes)
+        self.velocity = int(self.velocity)
 
     def calc_avg_start(self):
         self.time = 0
@@ -78,10 +82,11 @@ class score:
         self.key = 'c'
         self.interval = 0
 
-    def push_note(self, pitch_num, s, e, velocity):
+    def push_note(self, pitch_num, s, e, velocity, tempo):
         tnote = note(pitch_num, s, velocity)
         if len(self.accords)==0:
             tmp_accord = accord()
+            tmp_accord.tempo = tempo
             tmp_accord.push_to_accord(tnote)
             self.accords.append(tmp_accord)
 
@@ -89,6 +94,7 @@ class score:
             self.accords[-1].calc_avg_start()
             self.accords[-1].calc_avg_velocity()
             tmp_accord = accord()
+            tmp_accord.tempo = tempo
             tmp_accord.push_to_accord(tnote)
             self.accords.append(tmp_accord)
 
@@ -96,11 +102,84 @@ class score:
             self.accords[-1].push_to_accord(tnote)
 
     def push_finished(self):
-        self.push_note(-1, self.accords[-1].notes[-1].time+320, self.accords[-1].notes[-1].time+320, -1)
+        self.push_note(-1, self.accords[-1].notes[-1].time+320, self.accords[-1].notes[-1].time+320, -1, 0)
         self.accords[-1].time = self.accords[-2].notes[-1].time+320
         self.mark_beat()
         self.divide_hands()
+        self.mark_symboles()
         #self.detect_key()
+
+    def mark_symboles(self):
+        # divide hands 후에 크레센도, 전에 accent실행해야함
+        velocities = []
+        tempos = []
+        for i in range(len(self.accords)):
+            velocities.append(self.accords[i].velocity)
+            tempos.append(self.accords[i].tempo)
+        velocities = np.array(velocities)
+        tempos = np.array(tempos)
+        
+        tempos = filters.gaussian_filter1d(tempos, 40)
+        accents, _ = signal.find_peaks(velocities, prominence=10, height = max(velocities)*0.8)
+
+        pianoforte = filters.gaussian_filter1d(velocities, 50)
+        pianoforte_index = [0 for x in range(len(pianoforte))]
+        tmp = (max(pianoforte)+1-min(pianoforte))/4
+        bounds = []
+        i = 0
+        while True:
+            if i >= len(pianoforte):
+                break
+            bound = (int((pianoforte[i]-min(pianoforte))/tmp))
+            if bound == 0:
+                pianoforte_index[i] = -1
+                while i<len(pianoforte) and (int((pianoforte[i]-min(pianoforte))/tmp))==0 :
+                    i += 1
+            elif bound == 3:
+                pianoforte_index[i] = 1
+                while i<len(pianoforte) and (int((pianoforte[i]-min(pianoforte))/tmp))==3 :
+                    i += 1
+            else:
+                i += 1
+
+        print(pianoforte_index)
+
+        plt.plot(tempos)
+        plt.show()
+        plt.plot(velocities)
+        plt.plot(accents, velocities[accents], 'ob')
+        plt.show()
+        plt.plot(pianoforte)
+        plt.show()
+
+        symbol_accords = []
+        for i in range(len(self.accords)):
+            symbol_accords.append(self.accords[i])
+            if i in accents:
+                tmp = accord()
+                tmp.vice = -8
+                symbol_accords.append(tmp)
+            if pianoforte_index[i] != 0:
+                if pianoforte_index[i] == 1:
+                    tmp = accord()
+                    tmp.vice = -7
+                    symbol_accords.append(tmp)
+                else:
+                    tmp = accord()
+                    tmp.vice = -6
+                    symbol_accords.append(tmp)
+        
+        self.accords = symbol_accords
+
+
+
+        ##악센트 음표 뒤 -8
+        ##크레센도 -3 음표 뒤
+        ## 디크레 -4 음표 뒤
+        ## 크레 디크레 끝나는거 -5 뒤
+        ##포르테 -7 음표 뒤
+        ##피아니 -6 음표 뒤
+
 
     def detect_key(self):
         pitch_count = [0 for _ in range (0, 88)]
@@ -282,8 +361,6 @@ class score:
 
         
     def make_score(self, filename='test', title='test'):
-        self.push_finished()
-
         self.bar = 4
         lily_string = lily_notation(self.accords_left, self.accords_right, self.bar, self.key, title, midi=0)
         try:
@@ -298,8 +375,6 @@ class score:
 
 
     def make_midi(self, filename='output'):
-        self.push_finished()
-
         midi = pretty_midi.PrettyMIDI(initial_tempo = 120)
         piano = pretty_midi.Instrument(program=1)
 
@@ -307,7 +382,7 @@ class score:
             accord_it = self.accords[i]
             start_time = accord_it.time * self.time_resolution
             end_time = start_time + 0.25
-            velocity = accord_it.velocity
+            velocity = int(accord_it.velocity)
             for j in range(len(accord_it.notes)):
                 note_it = accord_it.notes[j]
                 midi_note = pretty_midi.Note(pitch=int(note_it.pitch+21), start=start_time, end=end_time, velocity=int(velocity))
@@ -318,9 +393,6 @@ class score:
         print("midi generated")
 
     def make_midi_beat(self, filename='output'):
-
-        self.push_finished()
-
         midi = pretty_midi.PrettyMIDI(initial_tempo = 120)
         piano = pretty_midi.Instrument(program=1)
 
@@ -330,8 +402,8 @@ class score:
             accord_it = self.accords[i]
             
             end_time = start_time + 0.25
-            #velocity = int(accord_it.velocity)
-            velocity = 100
+            velocity = int(accord_it.velocity)
+
             for j in range(len(accord_it.notes)):
                 note_it = accord_it.notes[j]
                 midi_note = pretty_midi.Note(pitch=int(note_it.pitch+21), start=start_time, end=end_time, velocity=int(velocity))
@@ -354,10 +426,10 @@ class score:
             quoting = csv.QUOTE_MINIMAL)
         with open(filename, 'w', newline='') as mycsvfile:
             thedatawriter = csv.writer(mycsvfile, dialect='mydialect')
-            thedatawriter.writerow([self.time_resolution])
+            thedatawriter.writerow([self.time_resolution, self.interval])
             for accord in self.accords:
                 for note in accord.notes:
-                    thedatawriter.writerow([note.pitch,note.time,note.velocity])
+                    thedatawriter.writerow([note.pitch,note.time,note.velocity,accord.tempo])
     
     def read_csv(self, filename) :
         csv.register_dialect(
@@ -375,15 +447,18 @@ class score:
             for row in thedata:
                 if(i==0):
                     self.time_resolution = float(row[0])
+                    self.interval = float(row[1])
                     i+=1
                 else :
                     pitch = int(row[0])
                     start = int(row[1])
-                    velocity = float(row[2])
-                    self.push_note(pitch, start, start+25, velocity)
+                    velocity = int(row[2])
+                    tempo = float(row[3])
+                    self.push_note(pitch, start, start+25, velocity, tempo)
 
 if __name__=='__main__':
     
     result = score(0)
     result.read_csv('작은별진짜.csv')
+    result.push_finished()
     result.make_midi_beat('작은별진짜')

@@ -83,6 +83,8 @@ class pd_processor:
 
 
     def detect_pitch(self):
+        frame_sum = np.sum(self.spec, axis=1)
+        velocities = (frame_sum / np.max(frame_sum) * 100) + 20
         frame_energy = np.sum((np.power(self.spec, 4)/100000000), axis=1)
         total_concaves, _ = signal.find_peaks(frame_energy, distance=15, height=max(frame_energy)/10)
         interval = get_interval(total_concaves) / 4
@@ -91,13 +93,16 @@ class pd_processor:
         self.result.interval = interval
         print(interval)
         metronome = [total_concaves[0]]
+        tempos = [interval]
         for i in range(1,len(total_concaves)):
             dif = total_concaves[i]-total_concaves[i-1]
             beat = round(dif / interval)
             if beat > 1:
                 for j in range(int(round(dif/interval))-1):
                     metronome.append(metronome[-1] + dif / beat)
+                    tempos.append(dif/beat)
             metronome.append(total_concaves[i])
+            tempos.append(dif/beat)
         
         valid_peaks = []
         start_ends = []
@@ -134,13 +139,16 @@ class pd_processor:
                 end = start_ends[i][j][1]
                 peak = metronome[k]
                 if start <= peak and end >= peak:
-                    pitch_map[int(round(peak))][i]=1
+                    pitch_map[int(round(peak))][i]=tempos[k]
                     k += 1 ; j += 1
                 elif peak < start:
                     k += 1
                 else:
                     j += 1
-
+        print('################')
+        print(len(velocities))
+        print(len(tempos))
+        print('################')
         self.octave_decrease()
         count = 0
         for frame in range(len(self.spec)):
@@ -148,9 +156,10 @@ class pd_processor:
                 if pitch_map[frame][freq] != 0 and self.spec[frame][freq]>0:
                     #if self.spec[frame][freq-1] < self.spec[frame][freq] and self.spec[frame][freq+1]<self.spec[frame][freq]:
                         #self.result.push_note(freq+8, frame, frame+40, self.spec[frame][freq])
-                    self.result.push_note(freq+8, frame, frame+40, 100)
+                    self.result.push_note(freq+8, frame, frame+40, int(velocities[frame]), pitch_map[frame][freq])
                     count += 1
         print("num_note : ", count)
+        self.result.push_finished()
 
 
 
@@ -224,6 +233,7 @@ class pd_processor:
                         #self.result.push_note(freq+8, frame, frame+40, self.spec[frame][freq])
                     self.result.push_note(freq+8, frame, frame+40, 100)
                     count += 1
+        self.result.push_finished()
         print("num_note : ", count)
 
     def detect_pitch_for_octave_test(self):
@@ -242,6 +252,7 @@ class pd_processor:
                         #self.result.push_note(freq+8, frame, frame+40, self.spec[frame][freq])
                     self.result.push_note(freq+8, frame, frame+40, 100)
                     count += 1
+        self.result.push_finished()
         print("num_note : ", count)
                                 
 
@@ -321,9 +332,9 @@ class pd_processor:
 if __name__=='__main__':
     
     pdp = pd_processor()
-    test_sound = sound('https://www.youtube.com/watch?v=Hf2MFBz4S_g') #라캄파넬라
+    #test_sound = sound('https://www.youtube.com/watch?v=Hf2MFBz4S_g') #라캄파넬라
     #test_sound = sound('https://www.youtube.com/watch?v=22jE6FdYjxE') #왕벌
-    #test_sound = sound('https://www.youtube.com/watch?v=6vo66K06wFU') #아르카나
+    test_sound = sound('https://www.youtube.com/watch?v=6vo66K06wFU') #아르카나
     #test_sound = sound('https://www.youtube.com/watch?v=w-4xH2DLv8M') # 작은별
     #test_sound = sound('https://www.youtube.com/watch?v=cqOY7LF_QrY') #관짝
     result = pdp.do(test_sound)
