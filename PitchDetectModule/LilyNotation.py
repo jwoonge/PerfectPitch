@@ -1,13 +1,23 @@
 from collections import namedtuple
-
+import Accord as AC
 
 def lily_notation(lh_sheet, rh_sheet, bar, key, filename, midi=0):
     ret = "\\version \"2.20.0\"\n\\header{\n  title = \"" + filename + "\"\n}"
     RH_head = "rhMusic = {\n\t"
     LH_head = "lhMusic = {\n\t"
-    RH_body = get_body(rh_sheet)
-    LH_body = get_body(lh_sheet)
-    fin = "\n}\n\n"
+    minor = False
+    if key in ['f', 'bes', 'ees', 'aes', 'des', 'ges', 'ces']:
+        minor = True
+
+    #lh_sheet = divide_beat(lh_sheet, bar)
+    #rh_sheet = divide_beat(rh_sheet, bar)
+    
+    lh_sheet, rh_sheet = translate_beat(lh_sheet, rh_sheet)
+
+    RH_body = get_body(rh_sheet, minor)
+    LH_body = get_body(lh_sheet, minor)
+    fin_bar = "\\bar \"|.\""
+    fin = fin_bar + "\n}\n\n"
     midi_str = ""
     if midi>0:
         midi_str = "  \\midi { \n    \\tempo 4 = " + str(midi) + "\n  }\n"
@@ -15,46 +25,116 @@ def lily_notation(lh_sheet, rh_sheet, bar, key, filename, midi=0):
     
     ret += "\n" + RH_head + RH_body + fin + LH_head + LH_body + fin + score_data
     return ret
-        
-def divide_beat(accords, bar):
-    note_temp = namedtuple("note", "pitch start beat velocity")
+
+
+
+
+def beat_LUT(beat):
+    ##임시로##
+    if(beat > 16):
+        beat = 16
+    ##########
+    LUT = [[0], [1], [2], [3], [4], [4, 1], [6], [6, 1], [8], [8, 1], [8, 2], [8, 3], [12], [12, 1], [12, 2], [12, 3], [16]]
+    return LUT[beat]
+
+def translate_beat(lh_sheet, rh_sheet):#12345678910
+    note_temp = namedtuple("note", "pitch time velocity")
+    tie = AC.accord()
+    tie.vice = -2
+    beat_table = ['', '16', '8', '8.', '4', '', '4.', '', '2', '', '', '', '2.', '', '', '', '1']
     i = 0
-    tie = accord()
-    tie.vice = True
-    tie.pitch = 0
+    while(i < len(lh_sheet)):
+        beat = beat_LUT(lh_sheet[i].beat)
+        lh_sheet[i].beat = beat[0]
+        if len(beat) == 2:
+            temp_accord = AC.accord()
+            for j in range (0, len(lh_sheet[i].notes)):
+                temp_accord.notes.append(note_temp(lh_sheet[i].notes[j].pitch, 0, lh_sheet[i].notes[j].velocity))
+            temp_accord.vice = 0
+            temp_accord.beat = beat[1]
+            lh_sheet.insert((i+1), tie)
+            lh_sheet.insert((i+2), temp_accord)
+            i += 2
+        i += 1
+        
+    i = 0
+    while(i < len(rh_sheet)):
+        beat = beat_LUT(rh_sheet[i].beat)
+        rh_sheet[i].beat = beat[0] 
+        if len(beat) == 2:
+            temp_accord = AC.accord()
+            for j in range(0, len(rh_sheet[i].notes)):
+                temp_accord.notes.append(note_temp(rh_sheet[i].notes[j].pitch, 0, rh_sheet[i].notes[j].velocity))
+            temp_accord.vice = 0
+            temp_accord.beat = beat[1]
+            rh_sheet.insert((i+1), tie)
+            rh_sheet.insert((i+2), temp_accord)
+            i += 2
+        i += 1
+
+    for accord in lh_sheet:
+        if accord.vice == 0:
+            accord.beat = beat_table[int(accord.beat)]
+
+    for accord in rh_sheet:
+        if accord.vice == 0:
+            accord.beat = beat_table[int(accord.beat)]
+    return lh_sheet, rh_sheet
+
+def divide_beat(accords, bar):
+    bar = bar * 4
+    note_temp = namedtuple("note", "pitch time velocity")
+    tie = AC.accord()
+    tie.vice = -2
+    beat_sum = 0
+    i = 0
     while(i < len(accords)):
-        if not accords[i].vice:
-            note_tf = []
-            for note in accords[i].notes:
-                note_tf.append(note.start // bar == (note.start + note.beat - 1) // bar)
-            if all(note_tf):
+        if accords[i].vice == 0 or accord[i].vice == -1:
+            if beat_sum // bar == (beat_sum + accords[i].beat - 1) // bar:
+                beat_sum += accords[i].beat
                 i += 1
             else:
-                over = accord()
-                for note in accords[i]:
-                    if not note.start // bar == (note.start + note.beat - 1) // bar:
-                        forward_beat = note.beat - (note.start+note.beat)%bar
-                        backward_beat = note.beat - forward_beat
-                        backward_start = note.start + note.beat - (note.start + note.beat) % bar
-                        accords[i].notes.remove(note)
-                        accords[i].notes.append(note_temp(note.pitch, note.start, forward_beat, note.velocity))
-                        over.push_to_accord(note_temp(note.pitch, backward_start, backward_beat, note.velocity))
-                        accords.insert(i+1, tie)
-                        accords.insert(i+2, over)
-                i += 3
+                bar_diff = (beat_sum + accords[i].beat) // bar - beat_sum // bar
+                over = AC.accord()
+                backward_beat = (beat_sum + accords[i].beat) % bar
+                if bar_diff == 1:
+                    forward_beat = accords[i].beat - backward_beat
+                    beat_sum += accords[i].beat
+                    accords[i].beat = forward_beat
+                    over.notes = accords[i].notes
+                    over.beat = backward_beat
+                    accords.insert(i+1, tie)
+                    accords.insert(i+2, over)
+                    i += 3
+                else:
+                    forward_beat = (accords[i].beat - backward_beat) % bar
+                    beat_sum += accords[i].beat
+                    accords[i].beat = forward_beat
+                    j = 0
+                    while j < bar_diff:
+                        over = AC.accord()
+                        over.notes = accords[i].notes
+                        if not j == bar_diff - 1:
+                            over.beat = bar
+                            accords.insert(i + j * 2 + 1, tie)
+                            accords.insert(i + j * 2 + 2, over)
+                        else:
+                            over.beat = backward_beat
+                            accords.insert(i + j * 2 + 1, tie)
+                            accords.insert(i + j * 2 + 2, over)
+                        j += 1
+                    i += j * 2 + 3
+
     return accords
+    
 
-def translate_beat(accord, bar):
-    for note in accord:
-        note.beat = bar / beat #bar = 한 마디에 들어가는 박자 / beat는 박자를 음표로 환산한 것이 되야 함
-
-def get_body(accords):
+def get_body(accords, minor):
     body = ""
     for accord in accords:
-        if accord.vice==True:
+        if accord.vice != 0:
             body += vice_to_string(accord)
         else:
-            body += accord_to_string(accord)
+            body += accord_to_string(accord, minor)
     return body
 
 
@@ -65,19 +145,48 @@ def LUT(pitch_num):
     gye = gyeLUT[gye]
     return gye, oc
 
+def LUT_minor(pitch_num):
+    gye = (pitch_num-3)%12
+    oc = int((pitch_num-3)/12)
+    gyeLUT = ['c','des','d','ees','e','f','ges','g','aes','a','bes','b']
+    gye = gyeLUT[gye]
+    return gye, oc
 
 def vice_to_string(accord):#############
-    #if(accord.pitch == ):
-    return ""
+    ret = ""
+    if(accord.vice == -1):##rest
+        ret += " r" + str(accord.beat)
+    elif(accord.vice == -2):##연음줄
+        ret += "  ~"
+    elif(accord.vice == -3):##crec
+        ret += " \\< "
+    elif(accord.vice == -4):##decrec
+        ret += " \\> "
+    elif(accord.vice == -5):#end crec or decrec
+        ret += " \\! "
+    elif(accord.vice == -6):#piano
+        ret += ' p '
+    elif(accord.vice == -7):#forte
+        ret += ' f '
+    elif(accord.vice == -8):#accent
+        ret += ' -> '
+    elif(accord.vice == -9):#rit
+        ret += '\\mark \"rit\"'
+    elif(accord.vice == -10):#accel
+        ret += '\\mark \"accel\"'
+    return ret
 
-def accord_to_string(accord):
+def accord_to_string(accord, minor):
     if accord.beat == -1:
         accord.beat = 16
     start = "\\relative {<"
     body = ""
     fin = ">" + str(accord.beat) + '} '
 
-    gye, oc = LUT(accord.notes[0].pitch)
+    if not minor:
+        gye, oc = LUT(accord.notes[0].pitch)
+    else:
+        gye, oc = LUT_minor(accord.notes[0].pitch)
     body += gye
     for i in range(0, oc - 2):
         body += '\''
@@ -96,4 +205,5 @@ def accord_to_string(accord):
         body += " "
     
     return start + body + fin
-    
+
+
