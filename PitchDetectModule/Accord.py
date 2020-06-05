@@ -102,12 +102,22 @@ class score:
             self.accords[-1].push_to_accord(tnote)
 
     def push_finished(self):
+        self.mark_symboles()
         self.push_note(-1, self.accords[-1].notes[-1].time+320, self.accords[-1].notes[-1].time+320, -1, 0)
         self.accords[-1].time = self.accords[-2].notes[-1].time+320
         self.mark_beat()
         self.divide_hands()
-        self.mark_symboles()
         #self.detect_key()
+
+        print('#####pitch#####')
+        for i in range(len(self.accords_left)):
+            if self.accords_left[i].vice==0:
+                print(self.accords_left[i].notes[0].pitch, end=" ")
+
+        print('\n')
+        for i in range(len(self.accords_right)):
+            if self.accords_right[i].vice==0:
+                print(self.accords_right[i].notes[0].pitch, end=" ")
 
     def mark_symboles(self):
         # divide hands 후에 크레센도, 전에 accent실행해야함
@@ -151,10 +161,11 @@ class score:
         plt.show()
         plt.plot(pianoforte)
         plt.show()
-
+        
         symbol_accords = []
         for i in range(len(self.accords)):
             symbol_accords.append(self.accords[i])
+            
             if i in accents:
                 tmp = accord()
                 tmp.vice = -8
@@ -168,9 +179,10 @@ class score:
                     tmp = accord()
                     tmp.vice = -6
                     symbol_accords.append(tmp)
+            
         
         self.accords = symbol_accords
-
+        
 
 
         ##악센트 음표 뒤 -8
@@ -317,7 +329,7 @@ class score:
                 del bars[-1]
                 del indexes[-1]
 
-
+        double = False
         for index_bar in range(len(bars)):
             #interval = get_interval_in_pitches(bars[index_bar])
             interval = self.interval
@@ -326,20 +338,23 @@ class score:
                 frames = bars[index_bar][index_accord+1].time - bars[index_bar][index_accord].time
                 #print(frames, end=" : ")
                 beat = self.get_near_beat(frames/interval)
-                #if not beat==0:
-                #    beat = int(beat)
+                if beat==0.5:
+                    double = True
                 #print(beat, end="  ")
                 self.accords[indexes[index_bar][index_accord]].beat = beat
             if index_bar < len(bars)-1:
                 frame_last = bars[index_bar+1][0].time - bars[index_bar][-1].time
                 beat_last = self.get_near_beat(frame_last/interval)
-                if not beat_last == 0:
-                    beat_last = int(beat_last)
+                if beat_last == 0.5:
+                    double = True
                 self.accords[indexes[index_bar][-1]].beat = beat_last
             else:
                 self.accords[indexes[index_bar][-1]].beat = 1
 
             #print("\n-----------------------\n")
+        if double:
+            for i in range(len(self.accords)):
+                self.accords[i].beat = int(self.accords[i].beat*2)
         for i in range(len(self.accords)):
             print(self.accords[i].beat, end=" ")
 
@@ -462,3 +477,4 @@ if __name__=='__main__':
     result.read_csv('작은별진짜.csv')
     result.push_finished()
     result.make_midi_beat('작은별진짜')
+    result.make_score()
