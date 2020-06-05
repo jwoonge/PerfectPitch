@@ -5,6 +5,9 @@ LilyNotation.py
 	장단조 구현
 
 Pitchdetection
-	첫 음 못 잡는 문제 발생
-	convex와 concave로 보는데, 첫음구간에는 convex가 없음
-	0.15 height 준 것 아르카나에서는 동작 안함, 전체의 비율로 보도록 해야함
+	메트로놈이 frame_energy에서 나온 가장 첫 피크부터 잡는데
+	그래서 그 전과 맨끝은 디텍트가 안됨
+
+	이거 식을 distance4제곱으로 바까보자
+
+	89 90 주석참조
