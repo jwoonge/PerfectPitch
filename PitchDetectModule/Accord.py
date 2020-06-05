@@ -9,6 +9,28 @@ import os
 import sys
 import subprocess
 
+def get_interval_in_pitches(accords):
+    pitches_starts = [[] for i in range(88)]
+    for i in range(len(accords)-1):
+        for j in range(len(accords[i].notes)):
+            pitches_starts[accords[i].notes[j].pitch-8].append(accords[i].notes[j].time)
+    pitches_diff = []
+    for i in range(88):
+        for j in range(len(pitches_starts[i])-1):
+            diff = pitches_starts[i][j+1] - pitches_starts[i][j]
+            pitches_diff.append(diff)
+
+    distances = []
+    ranges = [0.01*x for x in range(800,3000)]
+    for interval in ranges:
+        distance = 0
+        for diff in pitches_diff:
+            left = abs(diff / interval - round(diff/interval))
+            distance += left / np.sqrt(interval)
+        distances.append(distance)
+    interval = np.argmin(distances)/100 + 8
+    return interval
+
 class note:
     def __init__(self, pitch, start, velocity):
         self.pitch = pitch
@@ -17,7 +39,7 @@ class note:
 
 class accord:
     def __init__(self):
-        self.vice = False
+        self.vice = 0
         self.notes = []
         self.beat = 0
         self.origin_frames = -1
@@ -53,6 +75,8 @@ class score:
         self.accords = []
         self.accord_th = 5
         self.time_resolution = time_resolution
+        self.key = 'c'
+        self.interval = 0
 
     def push_note(self, pitch_num, s, e, velocity):
         tnote = note(pitch_num, s, velocity)
@@ -62,6 +86,8 @@ class score:
             self.accords.append(tmp_accord)
 
         elif abs(tnote.time - self.accords[-1].notes[-1].time) >= self.accord_th:
+            self.accords[-1].calc_avg_start()
+            self.accords[-1].calc_avg_velocity()
             tmp_accord = accord()
             tmp_accord.push_to_accord(tnote)
             self.accords.append(tmp_accord)
@@ -71,14 +97,61 @@ class score:
 
     def push_finished(self):
         self.push_note(-1, self.accords[-1].notes[-1].time+320, self.accords[-1].notes[-1].time+320, -1)
-        for i in range(len(self.accords)):
-            self.accords[i].calc_avg_start()
-            #self.accords[i].calc_first_start()
-            self.accords[i].calc_avg_velocity()
+        self.accords[-1].time = self.accords[-2].notes[-1].time+320
         self.mark_beat()
         self.divide_hands()
+        #self.detect_key()
 
-        
+    def detect_key(self):
+        pitch_count = [0 for _ in range (0, 88)]
+        for accord in self.accords_left:
+            if accord.vice==0:
+                for note in accord.notes:
+                    pitch_count[note.pitch] += 1
+        for accord in self.accords_right:
+            if accord.vice==0:
+                for note in accord.notes:
+                    pitch_count[note.pitch] += 1
+        gyeLUT = ['c','cis','d','dis','e','f','fis','g','gis','a','ais','b']
+
+        gye_count = [0 for _ in range(0, 12)]
+        for i in range(len(pitch_count)):
+            gye, _ = LUT(i)
+            gye_count[gyeLUT.index(gye)] += pitch_count[i]
+        #print(gye_count)
+        self.key = 'c'
+        if(gye_count[6] / gye_count[5] >= gye_count[10] / gye_count[11]):
+            if(gye_count[6] > gye_count[5]):#파샵
+                self.key = 'g'
+                if(gye_count[1] > gye_count[0]):#도샵
+                    self.key = 'd'
+                    if(gye_count[8] > gye_count[7]):#솔샵
+                        self.key = 'a'
+                        if(gye_count[3] > gye_count[2]):#레샵
+                            self.key = 'e'
+                            if(gye_count[10] > gye_count[9]):#라샵
+                                self.key = 'b'
+                                if(gye_count[5] > gye_count[4]):#미샵(파)
+                                    self.key = 'fis'
+                                    if(gye_count[0] > gye_count[11]):#시샵(도)
+                                        self.key = 'cis'
+        elif(gye_count[6] / gye_count[5] <= gye_count[10] / gye_count[11]):
+            if(gye_count[10] > gye_count[11]):#시플랫
+                self.key = 'f'
+                if(gye_count[3] > gye_count[4]):#미플랫
+                    self.key = 'bes'
+                    if(gye_count[8] > gye_count[9]):#라플랫
+                        self.key = 'ees'
+                        if(gye_count[1] > gye_count[2]):#레플랫
+                            self.key = 'aes'
+                            if(gye_count[6] > gye_count[7]):#솔플랫
+                                self.key = 'des'
+                                if(gye_count[11] > gye_count[0]):#도플랫(시)
+                                    self.key = 'ges'
+                                    if(gye_count[4] > gye_count[5]):#파플랫(미)
+                                        self.key = 'ces'
+        else:
+            self.key = 'c'
 
     def divide_hands(self):
         del self.accords[-1]
@@ -103,8 +176,7 @@ class score:
                 self.accords_left[-1].beat = accord_it.beat
                 if len(accord_right.notes)==0:
                     rest = accord()
-                    rest.vice = True
-                    rest.pitch = -1
+                    rest.vice = -1
                     rest.beat = accord_it.beat
                     self.accords_right.append(rest)
             if len(accord_right.notes)>0:
@@ -112,36 +184,47 @@ class score:
                 self.accords_right[-1].beat = accord_it.beat
                 if len(accord_left.notes)==0:
                     rest = accord()
-                    rest.vice = True
-                    rest.pitch = -1
+                    rest.vice = -1
                     rest.beat = accord_it.beat
                     self.accords_left.append(rest)
 
-    def get_interval(self, accords):
-        pitches_starts = [[] for i in range(88)]
-        for i in range(len(accords)-1):
-            for j in range(len(accords[i].notes)):
-                pitches_starts[accords[i].notes[j].pitch-8].append(accords[i].notes[j].time)
-        pitches_diff = []
-        for i in range(88):
-            for j in range(len(pitches_starts[i])-1):
-                diff = pitches_starts[i][j+1] - pitches_starts[i][j]
-                pitches_diff.append(diff)
+        i=0
+        accords_left = []
+        while i<len(self.accords_left)-1:
+            if self.accords_left[i].vice==0 and self.accords_left[i+1].vice==-1:
+                start = self.accords_left[i]
+                beatsum = self.accords_left[i].beat
+                while i<len(self.accords_left)-1 and self.accords_left[i+1].vice==-1:
+                    i+=1
+                    beatsum += self.accords_left[i].beat
+                accords_left.append(start)
+                accords_left[-1].beat = beatsum
+            else:
+                accords_left.append(self.accords_left[i])
+            i+=1
+        accords_left.append(self.accords_left[-1])
+        self.accords_left = accords_left
 
-        distances = []
-        ranges = [0.01*x for x in range(800,3000)]
-        for interval in ranges:
-            distance = 0
-            for diff in pitches_diff:
-                left = abs(diff / interval - round(diff/interval))
-                distance += left / np.sqrt(interval)
-            distances.append(distance)
-        interval = np.argmin(distances)/100 + 8
-        return interval
+        i=0
+        accords_right = []
+        while i<len(self.accords_right):
+            if self.accords_right[i].vice==-1:
+                start = self.accords_right[i]
+                beatsum = 0
+                while i<len(self.accords_right) and self.accords_right[i].vice==-1:
+                    beatsum += self.accords_right[i].beat
+                    i += 1
+                accords_right.append(start)
+                accords_right[-1].beat = beatsum
+            else:
+                accords_right.append(self.accords_right[i])
+                i += 1
+        self.accords_right = accords_right
+
 
     def mark_beat(self):
         ############ 
-        n = 4
+        n = 1
         temp = int(self.accords[-1].time/n) #+1
         bars = [[] for x in range(n+50)]
         indexes = [[] for x in range(n+50)]
@@ -155,30 +238,31 @@ class score:
                 del bars[-1]
                 del indexes[-1]
 
+
         for index_bar in range(len(bars)):
-            interval = self.get_interval(bars[index_bar])
+            #interval = get_interval_in_pitches(bars[index_bar])
+            interval = self.interval
             print('interval:',interval)
             for index_accord in range(len(bars[index_bar])-1):
                 frames = bars[index_bar][index_accord+1].time - bars[index_bar][index_accord].time
                 #print(frames, end=" : ")
                 beat = self.get_near_beat(frames/interval)
-                if not beat==0:
-                    beat = int(16/beat)
+                #if not beat==0:
+                #    beat = int(beat)
                 #print(beat, end="  ")
                 self.accords[indexes[index_bar][index_accord]].beat = beat
             if index_bar < len(bars)-1:
                 frame_last = bars[index_bar+1][0].time - bars[index_bar][-1].time
                 beat_last = self.get_near_beat(frame_last/interval)
                 if not beat_last == 0:
-                    beat_last = int(16/beat_last)
+                    beat_last = int(beat_last)
                 self.accords[indexes[index_bar][-1]].beat = beat_last
             else:
                 self.accords[indexes[index_bar][-1]].beat = 1
 
             #print("\n-----------------------\n")
-        #for i in range(len(self.accords)):
-        #    print(self.accords[i].beat, end=" ")
-        self.interval = 23
+        for i in range(len(self.accords)):
+            print(self.accords[i].beat, end=" ")
 
     def get_near_beat(self,frame):
         if frame > 32:
@@ -195,14 +279,12 @@ class score:
             return 0.5
         else:
             return 0
-            #return round(frame)
 
         
     def make_score(self, filename='test', title='test'):
         self.push_finished()
 
         self.bar = 4
-        self.key = 'C'
         lily_string = lily_notation(self.accords_left, self.accords_right, self.bar, self.key, title, midi=0)
         try:
             f=open(filename+".ly","w")
@@ -243,23 +325,25 @@ class score:
         piano = pretty_midi.Instrument(program=1)
 
         start_time = 3
-        for i in range(len(self.accords)):
+        
+        for i in range(1, len(self.accords)):
             accord_it = self.accords[i]
-            start_time = start_time + accord_it.beat*self.interval*self.time_resolution
+            
             end_time = start_time + 0.25
-            #velocity = accord_it.velocity
-            velocity=100
+            #velocity = int(accord_it.velocity)
+            velocity = 100
             for j in range(len(accord_it.notes)):
                 note_it = accord_it.notes[j]
                 midi_note = pretty_midi.Note(pitch=int(note_it.pitch+21), start=start_time, end=end_time, velocity=int(velocity))
                 piano.notes.append(midi_note)
+            
+            start_time = start_time + (accord_it.beat)*self.interval*self.time_resolution
         
         midi.instruments.append(piano)
         midi.write(filename+'.mid')
         print("midi generated")
     
     def make_csv(self,filename) :
-        self.note_stack = sorted(self.note_stack, key=lambda x:x.start)
         csv.register_dialect(
             'mydialect',
             delimiter = ',',
@@ -271,8 +355,9 @@ class score:
         with open(filename, 'w', newline='') as mycsvfile:
             thedatawriter = csv.writer(mycsvfile, dialect='mydialect')
             thedatawriter.writerow([self.time_resolution])
-            for row in self.note_stack:
-                thedatawriter.writerow([row.pitch,row.start,row.end,row.velocity])
+            for accord in self.accords:
+                for note in accord.notes:
+                    thedatawriter.writerow([note.pitch,note.time,note.velocity])
     
     def read_csv(self, filename) :
         csv.register_dialect(
@@ -294,48 +379,11 @@ class score:
                 else :
                     pitch = int(row[0])
                     start = int(row[1])
-                    end = int(row[2])
-                    velocity = int(row[3])
-                    self.push_note(pitch, start, end, velocity)
+                    velocity = float(row[2])
+                    self.push_note(pitch, start, start+25, velocity)
 
 if __name__=='__main__':
     
-    #result = score(0)
-    #result.read_csv('results/아르카나.csv')
-    #result.make_midi_beat('results/작은별비트')
-    
-
-    '''
-    result = score(0.05)
-    result.push_note(57,102,4,100) #2
-    #result.push_note(57,20,4,100)
-    result.push_note(57,139,4,100) #1
-    result.push_note(57,160,4,100) #1
-    result.push_note(57,179,4,100) #1
-    result.push_note(57,199,4,100) #0
-    result.push_note(57,205,4,100) #0
-    result.push_note(57,211,4,100) #0.5
-    result.push_note(57,220,4,100) #2
-    result.push_note(57,264,4,100) #1
-    result.push_note(67,282,4,100)
-    result.make_midi_beat("results/test")
-    # 답 : 2 1 1 1 1 2 1
-    '''
-    
-
-
-    result = score(0.05)
-    result.push_note(55,102,4,100) #2
-    #result.push_note(57,20,4,100)
-    result.push_note(57,139,4,100) #1
-    result.push_note(27,160,4,100) #1
-    result.push_note(57,179,4,100) #1
-    result.push_note(59,199,4,100) #0.5
-    result.push_note(51,200,4,100)
-    result.push_note(61,211,4,100) #0.5
-    result.push_note(63,220,4,100) #2
-    result.push_note(57,264,4,100) #1
-    result.push_note(67,282,4,100)
-    result.make_score()
-    
-    
+    result = score(0)
+    result.read_csv('작은별진짜.csv')
+    result.make_midi_beat('작은별진짜')

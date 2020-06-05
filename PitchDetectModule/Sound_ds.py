@@ -49,11 +49,12 @@ class sound:
     def __init__(self, filename, file=True):
         #start_time = time.time()
         self.data = []
+        self.valid = True
         if '.mp3' in filename or '.wav' in filename:
             self.extract_from_file(filename)
         else:
-            self.extract_from_link(filename)
-        
+            if not self.extract_from_link(filename):
+                self.valid = False
         #print("time:", time.time()-start_time)
 
     def downmixing(self):
@@ -102,9 +103,9 @@ class sound:
             try:
                 print("Downloading...")
                 ydl.download([link])
-            except:
-                print("Error : invalid")
-                exit()
+            except Exception as e:
+                return False
             print("Download Complete")
         self.extract_from_file('temp.mp3')
         os.remove('temp.mp3') ###########
+        return True
