@@ -1,6 +1,8 @@
 import functools
 
-from flask import (Blueprint , flash , g, redirect, render_template, request, session, url_for,send_file)
+from flask import (Blueprint , flash , g, redirect, render_template, request, session, url_for)
+from flask import send_file
+from flask import make_response,jsonify
 from werkzeug.security import check_password_hash,generate_password_hash
 from werkzeug.utils import secure_filename
 import os
@@ -27,27 +29,23 @@ def upload_file() :
       username = str(request.environ.get('HTTP_X_REAL_IP', request.remote_addr))
       username = username.replace('.', '')
       testname = f.filename
+      filename_mid = username
+      print(testname)
       if '.wav' in testname or '.mp3' in testname:
         f.save(secure_filename(f.filename))
         pdp = PitchDetection.pd_processor()
-        filename_mid = username + '.mid'
-        filename_txt = username + '_detected_pitch.txt'
-        
         result = pdp.do(Sound_ds.sound(f.filename))
-        result.make_midi()
-        file = open(filename_txt, 'w')
-        file.write(result.str_pitches())
-        file.close()
-        output_zip = zipfile.ZipFile('output.zip', 'w')
-        output_zip.write('output.mid', compress_type=zipfile.ZIP_DEFLATED)
-        output_zip.write('detected_pitch.txt', compress_type=zipfile.ZIP_DEFLATED)
+        result.make_midi_beat(filename_mid)
+        result.make_score(filename_mid)
 
 
-        return send_file('../output.zip',
-                          # 다운받아지는 파일 이름.
-                        as_attachment=True)
+        response = make_response(send_file('../'+filename_mid+'.mid',
+                  # 다운받아지는 파일 이름.
+                as_attachment=True))
+
+        return response
       else :
-        return 'error'
+        return jsonify(massage='Incorrect File Format'),500
 
 
 @bp.route('/txt_pcm_file_download_with_file')

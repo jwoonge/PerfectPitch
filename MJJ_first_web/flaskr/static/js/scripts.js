@@ -172,6 +172,7 @@ $("#link_finish").click(function (event) {
   $("#upload_link_btn").hide();
   $("#upload_file_btn").hide();
   $("#progress_notice").show();
+  $("#progress_notice2").show();
   $("#progress").show();
 
   $.ajax({
@@ -186,31 +187,112 @@ $("#link_finish").click(function (event) {
         responseType : 'blob'
       },
       timeout: 600000,
-
-  }).done(function(response)
-  {
-
-
-      $("#progress_notice").hide();
-      $("#show_pdf").show()
-      $("#play_pdf").show()
-      var blob=new Blob([response]);
-      var link=document.createElement('a');
-      link.href=window.URL.createObjectURL(blob);
-      //link.href="youtube/translate_youtube_link";
-      link.download="OUTPUT.mid";
-      link.click();
-      //location.href = "youtube/translate_youtube_link";
-      //location.download = 'file.mid';
-      //location.click();
-      $("#progress").hide();
-      alert("Finish!");
-      $("#link_finish").prop("disabled", false);
-     
+      success : function(response)
+      {
+    
+    
+          $("#progress_notice").hide();
+          $("#progress_notice2").hide();
+          $("#show_pdf").show()
+          //$("#play_pdf").show()
+          var blob=new Blob([response]);
+          var link=document.createElement('a');
+          link.href=window.URL.createObjectURL(blob);
+          //link.href="youtube/translate_youtube_link";
+          link.download="OUTPUT.mid";
+          link.click();
+          //location.href = "youtube/translate_youtube_link";
+          //location.download = 'file.mid';
+          //location.click();
+          $("#progress").hide();
+          alert("Finish!");
+          $("#link_finish").prop("disabled", false);
+         
+        
     
 
+         
+        
+        
+
+    
+      },
+      error:function(request,status,error){
+        alert("code:"+request.status+"\n"+"message:"+'Incorrect Youtube Link'+"\n");
+        location.reload();
+       }
+  });
 
 
+
+});
+
+$("#upload_finish").click(function (event) {
+
+  //preventDefault 는 기본으로 정의된 이벤트를 작동하지 못하게 하는 메서드이다. submit을 막음
+  event.preventDefault();
+
+  // Get form
+  var form = $('#upload_file')[0];
+
+
+// Create an FormData object 
+  var data = new FormData(form);
+  hide_form();
+// disabled the submit button
+  $("#link_finish").prop("disabled", true);
+  $("#upload_link_btn").hide();
+  $("#upload_file_btn").hide();
+  $("#progress_notice").show();
+  $("#progress_notice2").show();
+  $("#progress").show();
+
+  $.ajax({
+      type: "POST",
+      enctype: 'multipart/form-data',
+      url: "upload/upload",
+      data: data,
+      processData: false,
+      contentType: false,
+      cache: false,
+      xhrFields: {
+        responseType : 'blob'
+      },
+      timeout: 600000,
+      success : function(response)
+      {
+    
+    
+          $("#progress_notice").hide();
+          $("#progress_notice2").hide();
+          $("#show_pdf").show()
+          //$("#play_pdf").show()
+          var blob=new Blob([response]);
+          var link=document.createElement('a');
+          link.href=window.URL.createObjectURL(blob);
+          //link.href="youtube/translate_youtube_link";
+          link.download="OUTPUT.mid";
+          link.click();
+          //location.href = "youtube/translate_youtube_link";
+          //location.download = 'file.mid';
+          //location.click();
+          $("#progress").hide();
+          alert("Finish!");
+          $("#link_finish").prop("disabled", false);
+         
+        
+    
+
+         
+        
+        
+
+    
+      },
+      error:function(request,status,error){
+        alert("code:"+request.status+"\n"+"message:"+'Incorrect File Format'+"\n");
+        location.reload();
+       }
   });
 
 

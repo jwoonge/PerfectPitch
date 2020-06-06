@@ -64,7 +64,7 @@
                                  <label for="file" ><p class="text-white-75 font-weight-light mb-5"> Choose Your Piano Music File </p> </label>
                                  <input type="file" class="form-control" id="file" name="file" accept=".mp3,.wav">
                                  <br>
-                                 <button type="submit" class="btn btn-info" id = "upload_finish"  onsubmit = hide_form() >Upload</button>
+                                 <button type="submit" class="btn btn-info" id = "upload_finish"  >Upload</button>
                              </div> </form>
 
                         <form id="upload_link"  method="POST" action="{{url_for('youtube.youtube_link') }}" >
@@ -81,14 +81,22 @@
                              </div> 
                         </form>
 
-                        <div id = "progress_notice"><p p class="text-white-75 font-weight-light mb-5" >Now Processing...</p></div>
+                        <div id = "progress_notice"><p p class="text-white-75 font-weight-light mb-5" >Now Processing...</p>
+                 
+                        
+                        
+                        </div>
+                        
                         <div class="spinner-border text-info" role="status" id="progress">
                             
                             
                             <span class="sr-only">Loading...</span>
                         </div>
+                    
+                        <p id='progress_notice2' p class="text-white-75 font-weight-light mb-5" ><br>After Processing the output will downloaded automatically</p>
                             <script>  
                                 $("#progress_notice").hide();
+                                $("#progress_notice2").hide();
                                 $("#progress").hide();
                               </script>
                         
@@ -97,10 +105,14 @@
                         <script>
                             $('#show_pdf').hide();
                         </script>
-                        <button type="button" class="btn btn-info" id="play_pdf"  >Play Sheet Music</button>
+
+
+                        <button type="button" class="btn btn-info" id="play_pdf"   >Play Sheet Music</button>
+
                         <script>
                             $('#play_pdf').hide();
                         </script>
+
                         <button type="button" class="btn btn-info" id="home_btn"  >Home</button>
                         <script>
                             $('#home_btn').hide();
