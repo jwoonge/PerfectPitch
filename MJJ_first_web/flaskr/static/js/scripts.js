@@ -77,7 +77,58 @@ $("#show_pdf").click(function javascript_onclick(){
 
 $("#results").show();
 $("#home_btn").show();
+var user_raw=new String(getip());
+var user_name = user_raw.replace(/\./gi,'');
+var user_name_form = {
+  'user' : user_name
+};
+var formData = new FormData();
+formData.append('name',user_name)
+$.ajax({
+  type: "POST",
+  url: "upload/showpdf",
+  data: formData,
+  processData: false,
+  contentType: false,
+  cache: false,
+  xhrFields: {
+    responseType : 'arraybuffer'
+  },
+  timeout: 600000,
+  success : function(response)
+  {
 
+
+     
+    var options = {
+      pdfOpenParams: {
+          navpanes: 0,
+          toolbar: 0,
+          statusbar: 0,
+          view:"FitV",
+          pagemode:"thumbs",
+          page: 1
+      },
+      forcePDFJS: true,
+      PDFJS_URL:"../static/js/pdfjs/web/viewer.html"
+    }
+
+    var file = new Blob([response],{type : 'application/pdf'});
+    const fileURL = window.URL.createObjectURL(file);
+    var myPDF = PDFObject.embed(fileURL,"#pdf", options);
+    
+    var el = document.querySelector("#results");
+    el.setAttribute("class", (myPDF) ?"success" :"fail");
+
+
+     
+    
+    
+
+
+  }
+
+});
 
 
 
@@ -166,6 +217,9 @@ $("#link_finish").click(function (event) {
 
 // Create an FormData object 
   var data = new FormData(form);
+  var user_raw=new String(getip());
+  var user_name = user_raw.replace(/\./gi,'');
+  data.append('name',user_name)
   hide_form();
 // disabled the submit button
   $("#link_finish").prop("disabled", true);
@@ -238,6 +292,9 @@ $("#upload_finish").click(function (event) {
 
 // Create an FormData object 
   var data = new FormData(form);
+  var user_raw=new String(getip());
+  var user_name = user_raw.replace(/\./gi,'');
+  data.append('name',user_name)
   hide_form();
 // disabled the submit button
   $("#link_finish").prop("disabled", true);

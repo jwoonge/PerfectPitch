@@ -28,8 +28,7 @@ def youtube_link() :
     if request.method == 'POST' :
       f = request.form['link']
       pdp = PitchDetection.pd_processor()
-      username = str(request.environ.get('HTTP_X_REAL_IP', request.remote_addr))
-      username = username.replace('.','')
+      username = request.form['name']
       filename_mid = username
       filename_txt = username + '_detected_pitch.txt'
       

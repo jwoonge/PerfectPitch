@@ -138,6 +138,7 @@
                             .success { color: #4F8A10;  }
                             .fail { color: #D8000C; background-color: #FFBABA; }
                             </style>
+
                         <div  id='results' >
                             <script>$('#results').hide()</script>
                             <div  style='overflow:scroll' id='pdf'></div>
@@ -151,28 +152,7 @@
                         </script>
                         <script src="../static/js/pdfobject.min.js"></script>
                             <script>
-                            var options = {
-                                pdfOpenParams: {
-                                    navpanes: 0,
-                                    toolbar: 0,
-                                    statusbar: 0,
-                                    view:"FitV",
-                                    pagemode:"thumbs",
-                                    page: 2
-                                },
-                                forcePDFJS: true,
-                                PDFJS_URL:"../static/js/pdfjs/web/viewer.html"
-                            };
-                             
                             
-                            var user_raw=new String(getip());
-                           
-                            var user_name = user_raw.replace(/\./gi,'');
-                            console.log(user_name)
-                            var myPDF = PDFObject.embed("../../../assets/pdf/"+user_name+".pdf","#pdf", options);
-                             
-                            var el = document.querySelector("#results");
-                            el.setAttribute("class", (myPDF) ?"success" :"fail");
                             
                             </script>
                              

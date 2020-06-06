@@ -26,8 +26,7 @@ def upload_file() :
 
     if request.method == 'POST' :
       f = request.files['file']
-      username = str(request.environ.get('HTTP_X_REAL_IP', request.remote_addr))
-      username = username.replace('.', '')
+      username = str(request.form['name'])
       testname = f.filename
       filename_mid = username
       print(testname)
@@ -56,3 +55,15 @@ def txt_pcm_download_with_file():
                      attachment_filename='downloaded_pcm_txt_file_name.txt',# 다운받아지는 파일 이름.
                      as_attachment=True)
 #send_file(filename, mimetype='text',attachment_filename='download pcm value.txt', as_attachment=True)
+
+@bp.route('/showpdf',methods=['GET','POST'])
+def show_pdf() :
+  user_name = str(request.form['name'])
+  print('##############################')
+  print(user_name)
+  print('############################')
+  filename = 'static/assets/pdf/'+user_name+'.pdf'
+  response = make_response(send_file(filename,
+                  # 다운받아지는 파일 이름.
+                as_attachment=True))
+  return response
