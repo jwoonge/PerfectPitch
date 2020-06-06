@@ -87,7 +87,7 @@ class pd_processor:
         velocities = (frame_sum / np.max(frame_sum) * 100) + 20
         frame_energy = np.sum((np.power(self.spec, 4)/100000000), axis=1)
         total_concaves, _ = signal.find_peaks(frame_energy, distance=15, height=max(frame_energy)/10)
-        interval = get_interval(total_concaves) / 4
+        interval = get_interval(total_concaves) #/4
         #########이부분 나누기를 어떻게 해줄지 고민하자
         #########그리고 마디별로 나눠서 템포 찾아보자
         self.result.interval = interval
@@ -108,7 +108,7 @@ class pd_processor:
         start_ends = []
 
         for i in range(88):
-            convex, _ = signal.find_peaks(max(self.spec[:,i])-self.spec[:,i], prominence=3)
+            convex, _ = signal.find_peaks(max(self.spec[:,i])-self.spec[:,i], prominence=2)
             peaks, _ = signal.find_peaks(self.spec[:,i], prominence = 4) #450/(i+40)
             convex = np.insert(convex, 0, 0)
             convex = np.insert(convex, len(convex), len(self.spec[:,i])-1)
@@ -339,7 +339,7 @@ if __name__=='__main__':
     #test_sound = sound('https://www.youtube.com/watch?v=cqOY7LF_QrY') #관짝
     result = pdp.do(test_sound)
     result.make_csv('작은별진짜.csv')
-    result.make_midi('abc')
+    #result.make_midi('abc')
     result.make_midi_beat('def')
     result.make_score()
     

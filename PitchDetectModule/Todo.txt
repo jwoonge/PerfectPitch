@@ -1,8 +1,8 @@
-accord_ds.py
-	
+accord.py
+	detect_key 수정
 	
 LilyNotation.py
-	장단조 구현
+	
 
 Pitchdetection
 	메트로놈이 frame_energy에서 나온 가장 첫 피크부터 잡는데
