@@ -438,9 +438,12 @@ class score:
             f.close()
         except:
             print("except")
-        #p = subprocess.Popen(filename+".ly", shell=True).wait()
-        #os.remove(filename+".ly")
-        #os.remove(filename+".log")
+        p = subprocess.Popen(filename+".ly", shell=True).wait()
+        os.remove(filename+".ly")
+        os.remove(filename+".log")
+        import shutil
+        shutil.move(filename+'.pdf','../MJJ_first_web/flaskr/static/assets/pdf/'+filename+'.pdf' )
+
 
 
     def make_midi(self, filename='output'):

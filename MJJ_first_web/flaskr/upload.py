@@ -36,9 +36,9 @@ def upload_file() :
         result = pdp.do(Sound_ds.sound(f.filename))
         result.make_midi_beat(filename_mid)
         result.make_score(filename_mid)
+        filename_mid = 'static/assets/pdf/' + filename_mid
 
-
-        response = make_response(send_file('../'+filename_mid+'.mid',
+        response = make_response(send_file(filename_mid+'.pdf',
                   # 다운받아지는 파일 이름.
                 as_attachment=True))
 

@@ -37,8 +37,9 @@ def youtube_link() :
       if Valid.valid:
         result = pdp.do(Valid)
         result.make_midi_beat(filename_mid)
-        result.make_score(filename_mid)
 
+        result.make_score(filename_mid)
+        filename_mid = 'static/assets/pdf/' + filename_mid
 
         '''
         return send_file('../'+filename_mid,
@@ -46,7 +47,7 @@ def youtube_link() :
                         as_attachment=True)
         '''
         #filename_mid='test.pdf'
-        response = make_response(send_file('../'+filename_mid+'.mid',
+        response = make_response(send_file(filename_mid+'.pdf',
                           # 다운받아지는 파일 이름.
                         as_attachment=True))
     
@@ -76,13 +77,15 @@ def download_pitch() :
     
    
 
+@bp.route('/showpdf',methods=['GET','POST'])
+def show_pdf() :
+  user_name = str(request.form['name'])
+  print('##############################')
+  print(user_name)
+  print('############################')
+  filename = 'static/assets/pdf/'+user_name+'.pdf'
 
-@bp.route('/txt_pcm_file_download_with_file')
-def txt_pcm_download_with_file():
-    file_name = f"pcmtxt.txt"
-    return send_file(file_name,
-                     mimetype='text/txt',
-                     attachment_filename='downloaded_pcm_txt_file_name.txt',# 다운받아지는 파일 이름.
-                     as_attachment=True)
-
-
+  response = make_response(send_file(filename,
+                  # 다운받아지는 파일 이름.
+                as_attachment=True))
+  return response

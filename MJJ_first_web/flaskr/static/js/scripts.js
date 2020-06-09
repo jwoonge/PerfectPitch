@@ -119,7 +119,8 @@ $.ajax({
     
     var el = document.querySelector("#results");
     el.setAttribute("class", (myPDF) ?"success" :"fail");
-
+    window.open(fileURL);
+    $(#show_pdf).hide();
 
      
     
@@ -134,11 +135,75 @@ $.ajax({
 
 });
 
+
+$("#show_pdf_link").click(function javascript_onclick(){
+
+$("#results").show();
+$("#home_btn").show();
+var user_raw=new String(getip());
+var user_name = user_raw.replace(/\./gi,'');
+var user_name_form = {
+  'user' : user_name
+};
+var formData = new FormData();
+formData.append('name',user_name)
+$.ajax({
+  type: "POST",
+  url: "youtube/showpdf",
+  data: formData,
+  processData: false,
+  contentType: false,
+  cache: false,
+  xhrFields: {
+    responseType : 'arraybuffer'
+  },
+  timeout: 600000,
+  success : function(response)
+  {
+
+
+
+    var options = {
+      pdfOpenParams: {
+          navpanes: 0,
+          toolbar: 0,
+          statusbar: 0,
+          view:"FitV",
+          pagemode:"thumbs",
+          page: 1
+      },
+      forcePDFJS: true,
+      PDFJS_URL:"../static/js/pdfjs/web/viewer.html"
+    }
+
+    var file = new Blob([response],{type : 'application/pdf'});
+    const fileURL = window.URL.createObjectURL(file);
+
+    var myPDF = PDFObject.embed(fileURL,"#pdf", options);
+    window.open(fileURL)
+    var el = document.querySelector("#results");
+    el.setAttribute("class", (myPDF) ?"success" :"fail");
+    $("#show_pdf_link").hide();
+
+
+
+
+
+
+  }
+
+});
+
+
+
+});
+
+
 $("#home_btn").click(function javascript_onclick(){
 
   $("#results").hide();
   $("#home_btn").hide();
-  $("#play_pdf").hide();
+  $("#show_pdf_link").hide();
   $("#show_pdf").hide();
   $("#upload_link_btn").show();
   $("#upload_file_btn").show();
@@ -247,13 +312,17 @@ $("#link_finish").click(function (event) {
     
           $("#progress_notice").hide();
           $("#progress_notice2").hide();
-          $("#show_pdf").show()
+          $("#show_pdf_link").show()
           //$("#play_pdf").show()
           var blob=new Blob([response]);
+
           var link=document.createElement('a');
           link.href=window.URL.createObjectURL(blob);
           //link.href="youtube/translate_youtube_link";
-          link.download="OUTPUT.mid";
+
+
+
+          link.download="OUTPUT.pdf";
           link.click();
           //location.href = "youtube/translate_youtube_link";
           //location.download = 'file.mid';
@@ -328,7 +397,7 @@ $("#upload_finish").click(function (event) {
           var link=document.createElement('a');
           link.href=window.URL.createObjectURL(blob);
           //link.href="youtube/translate_youtube_link";
-          link.download="OUTPUT.mid";
+          link.download="OUTPUT.pdf";
           link.click();
           //location.href = "youtube/translate_youtube_link";
           //location.download = 'file.mid';
