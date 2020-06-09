@@ -120,7 +120,7 @@ $.ajax({
     var el = document.querySelector("#results");
     el.setAttribute("class", (myPDF) ?"success" :"fail");
     window.open(fileURL);
-    $(#show_pdf).hide();
+    $("#show_pd").hide();
 
      
     
