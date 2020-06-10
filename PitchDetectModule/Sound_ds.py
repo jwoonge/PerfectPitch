@@ -1,10 +1,20 @@
 import os
+system_path = os.environ["PATH"]
+ffmpeg_path = ""
+tmp = os.path.dirname(os.path.realpath(__file__)).split('\\')
+for i in range(len(tmp)-1):
+    ffmpeg_path += tmp[i]+'\\'
+ffmpeg_path += 'ffmpeg\\bin'
+if not 'ffmpeg' in system_path:
+    os.environ["PATH"] = system_path+';'+ffmpeg_path
+    
 from os import rename
 import array
 from pydub import AudioSegment
 import youtube_dl
 import time
 import numpy as np
+
 
 
 def Write_wav(filename, input, sample_rate=16000, value_size=2, num_channels=1):

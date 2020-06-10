@@ -1,37 +1,12 @@
 import pretty_midi
 import csv
-from collections import Counter
-from dtw import dtw
 import numpy as np
-from matplotlib import pyplot as plt
 from LilyNotation import *
 import os
 import sys
 import subprocess
 from scipy.ndimage import filters
 from scipy import signal
-
-def get_interval_in_pitches(accords):
-    pitches_starts = [[] for i in range(88)]
-    for i in range(len(accords)-1):
-        for j in range(len(accords[i].notes)):
-            pitches_starts[accords[i].notes[j].pitch-8].append(accords[i].notes[j].time)
-    pitches_diff = []
-    for i in range(88):
-        for j in range(len(pitches_starts[i])-1):
-            diff = pitches_starts[i][j+1] - pitches_starts[i][j]
-            pitches_diff.append(diff)
-
-    distances = []
-    ranges = [0.01*x for x in range(800,3000)]
-    for interval in ranges:
-        distance = 0
-        for diff in pitches_diff:
-            left = abs(diff / interval - round(diff/interval))
-            distance += left / np.sqrt(interval)
-        distances.append(distance)
-    interval = np.argmin(distances)/100 + 8
-    return interval
 
 class note:
     def __init__(self, pitch, start, velocity):
@@ -100,18 +75,16 @@ class score:
             self.accords[-1].push_to_accord(tnote)
 
     def push_finished(self):
-        
         self.push_note(-10, self.accords[-1].notes[-1].time+320, self.accords[-1].notes[-1].time+320, -10, 0)
         self.accords[-1].vice=-1
         self.accords[-1].time = self.accords[-2].notes[-1].time+320
         self.mark_beat()
         self.mark_symboles()
         self.divide_hands()
-        #self.detect_key()
-
+        self.detect_key()
+      
 
     def mark_symboles(self):
-        # divide hands 후에 크레센도, 전에 accent실행해야함
         velocities = []
         tempos = []
         for i in range(len(self.accords)):
@@ -147,13 +120,9 @@ class score:
                 i += 1
 
         symbol_accords = []
-         
-        i = 0
-        lastbound = -1
+        i = 1
         startcrecendo= 0
         startdecrecendo=0
-        oncrecendo = False
-        ondecrecendo = False
         while True :
             if i >= len(bounds)-1 or i >= len(self.accords) :
                 break
@@ -165,56 +134,61 @@ class score:
                 tmp.vice = -8
 
                 symbol_accords.append(tmp)
-                lastbound = 1
+                lastbound = 3
+                change = True
      
-            if lastbound != 0 and bounds[i]==0 and ondecrecendo==True :
-                tmp = accord()
-                tmp.vice = -4
-                lastbound = bounds[i]
-                symbol_accords.insert(startdecrecendo+1,tmp)
-                tmp = accord()
-                tmp.vice = -5
-                symbol_accords.append(tmp)
-                ondecrecendo=False
-                oncrecendo=True
-            elif bounds[i] == 0 and lastbound !=0 :
+            if bounds[i-1] != 0 and bounds[i] == 0 :
                 tmp = accord()
                 tmp.vice = -6
+
                 symbol_accords.append(tmp)
 
-                lastbound = bounds[i]
-                
-                oncrecendo=True
-                ondecrecendo=False
-                startcrecendo = i
-
-            if lastbound != 3 and bounds[i]==3 and oncrecendo==True :
-                tmp = accord()
-                tmp.vice = -3
-                lastbound = bounds[i]
-                symbol_accords.insert(startcrecendo+1,tmp)
-                tmp = accord()
-                tmp.vice = -5
-                symbol_accords.append(tmp)
-                ondecrecendo=True
-                oncrecendo=False                
-  
-            elif bounds[i] == 3 and lastbound != 3 :
+            if bounds[i-1] <3 and bounds[i] == 3 :
                 tmp = accord()
                 tmp.vice = -7
+
                 symbol_accords.append(tmp)
-                lastbound = bounds[i]
+
+            if bounds[i-1] == 3 and bounds[i] < 3:
+                tmp = accord()
+                tmp.vice = -4
                 startdecrecendo = i
-                ondecrecendo=True
-                oncrecendo=False
+                symbol_accords.append(tmp)
+
+
+            if bounds[i-1] == 0 and bounds[i] > 0 :
+
+                tmp = accord()
+                tmp.vice = -3
+                startcrecendo = i
+                symbol_accords.append(tmp)
+
+            if startdecrecendo != 0 and bounds[i]<bounds[i+1] :
+                tmp = accord()
+                tmp.vice = -5
+                startdecrecendo = 0
+                symbol_accords.append(tmp)
+            elif startdecrecendo != 0 and i - startdecrecendo > 20 :
+                tmp = accord()
+                tmp.vice = -5
+                startdecrecendo = 0
+                symbol_accords.append(tmp)
+
+            if startcrecendo != 0 and bounds[i]>bounds[i+1] :
+                tmp = accord()
+                tmp.vice = -5
+                startcrecendo = 0
+                symbol_accords.append(tmp)
+            elif startcrecendo != 0 and i-startcrecendo > 30 :
+                tmp = accord()
+                tmp.vice = -5
+                startcrecendo = 0
+                symbol_accords.append(tmp)
 
             i+=1
+           
 
         self.accords = symbol_accords
-
-        for i in range(len(self.accords)):
-            print(self.accords[i].vice, end = " ")
-        print('\n')
 
         ##악센트 음표 뒤 -8
         ##크레센도 -3 음표 뒤
@@ -222,6 +196,7 @@ class score:
         ## 크레 디크레 끝나는거 -5 뒤
         ##포르테 -7 음표 뒤
         ##피아니 -6 음표 뒤
+
 
 
     def detect_key(self):
@@ -276,14 +251,12 @@ class score:
             self.key = 'c'
 
     def divide_hands(self):
-        del self.accords[-1]
-        print('\nc', len(self.accords))
         self.accords_left = []
         self.accords_right = []
         for i in range(len(self.accords)):
             accord_it = self.accords[i]
 
-            if accord_it.vice==0 or accord_it.vice==1:
+            if accord_it.beat > 0:
 
                 accord_left = accord()
                 accord_right = accord()
@@ -314,10 +287,10 @@ class score:
                         rest.beat = accord_it.beat
                         self.accords_left.append(rest)
             
-            else:
+            else: 
                 self.accords_right.append(accord_it)
                 #self.accords_left.append(accord_it)
-
+        
         i=0
         accords_left = []
         while i<len(self.accords_left)-1:
@@ -350,20 +323,7 @@ class score:
                 accords_right.append(self.accords_right[i])
                 i += 1
         self.accords_right = accords_right
-
-        print('r' ,len(self.accords_right))
-        print('l' ,len(self.accords_left))
-        print('########### vices ##################')
-        for i in range(len(self.accords)):
-            print(self.accords[i].vice, end=" ")
-        print('\n')
-        for i in range(len(self.accords_right)):
-            print(self.accords_right[i].vice, end=" ")
-        print('\n')
-        for i in range(len(self.accords_left)):
-            print(self.accords_left[i].vice, end = " ")
-        print('\n##################################')
-
+        
         #del(self.accords_left[-1])
 
 
@@ -385,16 +345,12 @@ class score:
 
         double = False
         for index_bar in range(len(bars)):
-            #interval = get_interval_in_pitches(bars[index_bar])
             interval = self.interval
-            print('interval:',interval)
             for index_accord in range(len(bars[index_bar])-1):
                 frames = bars[index_bar][index_accord+1].time - bars[index_bar][index_accord].time
-                #print(frames, end=" : ")
                 beat = self.get_near_beat(frames/interval)
                 if beat==0.5:
                     double = True
-                #print(beat, end="  ")
                 self.accords[indexes[index_bar][index_accord]].beat = beat
             if index_bar < len(bars)-1:
                 frame_last = bars[index_bar+1][0].time - bars[index_bar][-1].time
@@ -405,12 +361,11 @@ class score:
             else:
                 self.accords[indexes[index_bar][-1]].beat = 1
 
-            #print("\n-----------------------\n")
         if double:
             for i in range(len(self.accords)):
-                self.accords[i].beat = int(self.accords[i].beat*2)
-        for i in range(len(self.accords)):
-            print(self.accords[i].beat, end=" ")
+                self.accords[i].beat = int(round(self.accords[i].beat*2))
+        
+        del self.accords[-1]
 
     def get_near_beat(self,frame):
         if frame > 32:
@@ -442,8 +397,7 @@ class score:
         os.remove(filename+".ly")
         os.remove(filename+".log")
         import shutil
-        shutil.move(filename+'.pdf','../MJJ_first_web/flaskr/static/assets/pdf/'+filename+'.pdf' )
-
+        #shutil.move(filename+'.pdf','../MJJ_first_web/flaskr/static/assets/pdf/'+filename+'.pdf' )
 
 
     def make_midi(self, filename='output'):
@@ -500,14 +454,12 @@ class score:
 
                 for j in range(len(accord_it.notes)):
                     note_it = accord_it.notes[j]
-                    print(note_it.pitch, end= " ")
+                    #print(note_it.pitch, end= " ")
                     midi_note = pretty_midi.Note(pitch=int(note_it.pitch+21), start=start_time, end=end_time, velocity=100)
                     piano.notes.append(midi_note)
             
                 start_time = start_time + (accord_it.beat)*self.interval*self.time_resolution
 
-            else:
-                print('#',accord_it.vice, end= " ")
         
         midi.instruments.append(piano)
         midi.write(filename+'.mid')
