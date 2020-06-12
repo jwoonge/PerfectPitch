@@ -1,4 +1,6 @@
-import Accord as ac
+from Accord import accord_ds
+from Accord import score
+from Accord import note
 import copy
 
 def lily_notation(lh_sheet, rh_sheet, bar, key, filename, author, bpm, midi=0):
@@ -60,6 +62,8 @@ def LUT_minor(pitch_num):
     return gye, oc
 
 def accord_to_string(accord, minor):
+    table = ['a','b','c','d','e','f','g']
+
     if len(accord.notes)>0:
         start = "\\relative {<"
         body = ""
@@ -76,39 +80,34 @@ def accord_to_string(accord, minor):
         for i in range(0, 2 - oc):
             body += ','
         body += " "
-        last = oc
         
         last_pitch = accord.notes[0].pitch
-        for i in range(1, len(accord.notes)):
-            gye, oc = LUT(accord.notes[i].pitch)
-            body += gye
-            if last_pitch <= accord.notes[i].pitch:
-                if accord.notes[i].pitch - last_pitch >= 7:
-                    body += "\'"
-                for j in range(oc - last - 1):
-                    body += "\'"
+        last_gye = gye
+        last_oc = oc
 
-            else:        
-                if accord.notes[i].pitch - last_pitch < 7:
-                    body += ","
-                for j in range(last - oc - 1):
-                    body += ","
-            body += " "
-            last = oc
-            last_pitch = accord.notes[i].pitch
-            
-        '''
-        ####################원래코드
         for i in range(1, len(accord.notes)):
+            last_index = table.index(last_gye[0])
             gye, oc = LUT(accord.notes[i].pitch)
+            left = []
+            right = []
+            for j in range(1,4):
+                left.append(table[(last_index-j)%7])
+                right.append(table[(last_index+j)%7])
             body += gye
-            for j in range(oc-last):
+            dif = accord.notes[i].pitch - last_pitch
+            oc_dif = int((dif)/12)
+            if dif < 0 and gye[0] in right:
+                oc_dif -= 1
+            elif dif > 0 and gye[0] in left:
+                oc_dif += 1
+            for j in range(oc_dif):
                 body += "\'"
-            for j in range(last-oc):
+            for j in range(-oc_dif):
                 body += ","
             body += " "
-            last = oc
-        '''
+            last_pitch = accord.notes[i].pitch
+            last_gye = gye
+            last_oc = oc
         
         return start + body + fin
 
@@ -152,17 +151,17 @@ def divide_beat(accords, bar):
     bar = bar * 4
     enter_th = 4
 
-    tie = ac.accord()
+    tie = accord_ds()
     tie.vice = -2
     tie.beat = 0
     tie.notes = []
 
-    enter = ac.accord()
+    enter = accord_ds()
     enter.vice = -11
     enter.beat = 0
     enter.notes = []
 
-    bd = ac.accord()
+    bd = accord_ds()
     bd.vice = -12
     bd.beat = 0
     bd.notes = []
@@ -253,21 +252,6 @@ def divide_beat(accords, bar):
         accord_last = new[i]
     new[i].beat = new[i].beat + bar - left
     
-    '''
-    barsum = []
-    i = 0
-    while True:
-        if i >= len(new):
-            break
-        tempsum = 0
-        while i < len(new) and new[i].vice!=-12:
-            tempsum += new[i].beat
-            i += 1
-        
-        barsum.append(tempsum)
-        i += 1
-    print(barsum)
-    '''
     return new
 
 def merge_rests(accords):
@@ -295,7 +279,7 @@ def merge_rests(accords):
 def translate_beat(accords):
     new = []
     
-    tie = ac.accord()
+    tie = accord_ds()
     tie.vice = -2
     tie.beat = 0
     tie.notes = []
@@ -329,3 +313,30 @@ def translate_beat_sub(beat):
         if left == 0:
             break
     return ret
+
+if __name__=='__main__':
+    test = score(0.03)
+    test.interval = 20
+    
+    for k in range(7):
+        notes = []
+        for i in range(12):
+            notes.append(note(38+2*i+k, 100, 100))
+        accorrd = accord_ds()
+        accorrd.notes = notes
+        accorrd.beat = 2
+        accorrd.vice = 0
+        test.accords_left.append(accorrd)
+        test.accords_right.append(accorrd)
+
+        accorrd = accord_ds()
+        accorrd.notes.append(note(38+k,100,100))
+        accorrd.vice = 0
+        accorrd.beat = 4
+
+        test.accords_left.append(accorrd)
+        test.accords_right.append(accorrd)
+
+
+    test.make_score()
+

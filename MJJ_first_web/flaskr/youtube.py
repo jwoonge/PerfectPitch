@@ -32,9 +32,15 @@ def youtube_link() :
         if Valid.valid:
 
           result = pdp.do(Valid)
-          result.make_midi_beat(filename_mid)
 
           result.make_score(filename_mid,title=Valid.title,author=Valid.author)
+          result.make_wav(filename_mid)
+          
+          from PitchDetectModule import MeasureAccuracy          ###
+          filename_wav = 'flaskr/static/assets/mid/' + filename_mid
+          accuracy = MeasureAccuracy.measure_accuracy(pdp, filename_wav+'.wav')    ####
+          print('ACC : ',round(accuracy,2))        ####
+
           filename_mid = 'static/assets/pdf/' + filename_mid
 
           '''

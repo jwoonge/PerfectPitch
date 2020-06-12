@@ -15,7 +15,7 @@ bp = Blueprint('upload', __name__, url_prefix='/upload')
 
 @bp.route('/upload',methods=['GET','POST'])
 def upload_file() :
-
+    
     if request.method == 'POST' :
       f = request.files['file']
       username = str(request.form['name'])
@@ -26,8 +26,14 @@ def upload_file() :
         try :
           pdp = PitchDetection.pd_processor()
           result = pdp.do(Sound_ds.sound(f.filename))
-          result.make_midi_beat(filename_mid)
           result.make_score(filename_mid,title=testname)
+          result.make_wav(filename_mid)
+
+          from PitchDetectModule import MeasureAccuracy         ###
+          filename_wav = 'flaskr/static/assets/mid/' + filename_mid
+          accuracy = MeasureAccuracy.measure_accuracy(pdp, filename_wav+'.wav')  ###
+          print('ACC : ',round(accuracy,2))   ####
+
           filename_mid = 'static/assets/pdf/' + filename_mid
 
           response = make_response(send_file(filename_mid+'.pdf',

@@ -11,7 +11,7 @@ from scipy.ndimage import filters
 
 import time
 #import matplotlib.pyplot as plt
-import csv
+#import csv
 from Accord import score
 
 def get_interval(input_list, vmin=8, vmax=70):
@@ -93,12 +93,14 @@ class pd_processor:
         self.sample_rate = input_pcm.sample_rate
         self.spec = self.get_spectrogram(input_pcm)
         self.global_max = np.max(np.max(self.spec, axis=0),axis=0)
-        self.result = score(self.time_resolution)
+        self.result = score(self.time_resolution, self.sample_rate)
         self.detect_pitch()
         return self.result
 
 
     def detect_pitch(self):
+        print('Detect Pitch...')
+        print('\tMake Metronome...',end=" ")
         frame_sum = np.sum(self.spec, axis=1)
         velocities = (frame_sum / np.max(frame_sum) * 100) + 20
         frame_energy = np.sum((np.power(self.spec, 4)/100000000), axis=1)
@@ -106,7 +108,6 @@ class pd_processor:
         interval = get_interval(total_concaves)
         
         self.result.interval = interval
-        print('######',interval)
 
         ################# make metronome #################
         metronome = [total_concaves[0]]
@@ -141,6 +142,9 @@ class pd_processor:
             plt.plot([met, met],[0,max(frame_energy)],c='r')
         plt.show()
         '''
+        print('Done')
+        print('\tbest interval : ',interval,' frame')
+        print('\tFind peaks of each pitch...',end=" ")
         #################### tempos ######################
         tempos = [interval]
         for i in range(len(metronome)-1):
@@ -172,10 +176,10 @@ class pd_processor:
                     k += 1
             valid_peaks.append(valid_peak)
             start_ends.append(start_end)
-        
+        print('Done')
         ################## integration #########################
 
-
+        print('Cross Validation...',end=" ")
         pitch_map = np.zeros((len(self.spec),len(self.spec[0]),2))
         for i in range(88):
             j=0;k=0
@@ -196,18 +200,18 @@ class pd_processor:
                     j += 1
         valid_peaks = np.array(valid_peaks)
         
-        self.octave_decrease()
+        decreased_spec = self.octave_decrease(self.spec)
 
         count = 0
-        for frame in range(len(self.spec)):
+        for frame in range(len(decreased_spec)):
             for freq in range(1,87):
-                if pitch_map[frame][freq][0] != 0 and self.spec[int(pitch_map[frame][freq][1])][freq]>1:
+                if pitch_map[frame][freq][0] != 0 and decreased_spec[int(pitch_map[frame][freq][1])][freq]>1:
                     #if self.spec[frame][freq-1] < self.spec[frame][freq] and self.spec[frame][freq+1]<self.spec[frame][freq]:
                         #self.result.push_note(freq+8, frame, frame+40, self.spec[frame][freq])
-                    if self.spec[int(pitch_map[frame][freq][1])][freq] > max(self.spec[int(pitch_map[frame][freq][1])])*0.1:
+                    if decreased_spec[int(pitch_map[frame][freq][1])][freq] > max(decreased_spec[int(pitch_map[frame][freq][1])])*0.1:
                         self.result.push_note(freq+8, frame, frame+40, int(velocities[frame]), pitch_map[frame][freq][0])
                         count += 1
-
+        print("Done")
         print("num_note : ", count)
         self.result.push_finished()
                             
@@ -216,10 +220,10 @@ class pd_processor:
         max_freq = np.argmax(spec[:,50:150])%(100)+50
         #max_freq = np.argmax(spec[:][100:])%(np.shape(spec)[1]-100)+100
         near_freq = self.key_freq[get_near_pitch_num(max_freq)]
-        print("\t max_freq : ",max_freq)
-        print("\t near_freq: ",near_freq)
+        print("\tmax_freq : ",max_freq)
+        print("\tnear_freq: ",near_freq)
         tuning_rate = near_freq/max_freq
-        print("\t tuning_rate: ",tuning_rate)
+        print("\ttuning_rate: ",tuning_rate)
         return tuning_rate
 
     def get_spectrogram(self, pcm):
@@ -239,7 +243,7 @@ class pd_processor:
         tuning_rate = self.get_tuning_rate(Zxx)
         self.dict = get_freq_dict(np.shape(Zxx)[1], tuning_rate*4)
         end_t = time.time()
-        print("\t Fourier Transform Complete", round(end_t-start_t,2),"sec")
+        print("\tFourier Transform Complete", round(end_t-start_t,2),"sec")
 
         start_t = time.time()
         spec = np.zeros((np.shape(Zxx)[0],88))
@@ -249,14 +253,14 @@ class pd_processor:
             spec[:,pitch] = spec[:,pitch] + Zxx[:,freq]
         spec = np.sqrt(spec)
         end_t = time.time()
-        print('\t Generating freq-to-pitch Complete', round(end_t-start_t,2),"sec")
+        print('\tGenerating freq-to-pitch Complete', round(end_t-start_t,2),"sec")
 
-        print("\t Generating Spectrogram Complete")
-        print("\t sec per frame : ", self.time_resolution)
+        print("\tGenerating Spectrogram Complete")
+        print("\tsec per frame : ", self.time_resolution)
         return spec
         
-    def octave_decrease(self):
-        decrease_value = np.zeros(np.shape(self.spec))
+    def octave_decrease(self, spec):
+        decrease_value = np.zeros(np.shape(spec))
         for pitch_origin in range(88):
             for pitch_to_dec in range(88):
                 reduce_rate = 0
@@ -278,10 +282,11 @@ class pd_processor:
                 elif abs(pitch_to_dec - pitch_origin)==1:
                     reduce_rate = self.one_pitch_reduce_rate
 
-                decrease_value[:,pitch_to_dec] = decrease_value[:,pitch_to_dec] + self.spec[:,pitch_origin]*reduce_rate
+                decrease_value[:,pitch_to_dec] = decrease_value[:,pitch_to_dec] + spec[:,pitch_origin]*reduce_rate
         
-        self.spec = self.spec - decrease_value
-        self.spec = np.where(self.spec < 0, 0, self.spec)
+        ret = spec - decrease_value
+        ret = np.where(ret < 0, 0, ret)
+        return ret
 
 
 if __name__=='__main__':
@@ -296,11 +301,13 @@ if __name__=='__main__':
         #test_sound = sound('https://www.youtube.com/watch?v=EiVmQZwJhsA') #금만
         test_sound = sound('https://www.youtube.com/watch?v=NV43k7fq8jA') #흑건
         result = pdp.do(test_sound)
-        result.make_csv('result.csv')
-        result.make_midi('wwkrdmsquf3')
-        result.make_midi_beat('def')
-        result.make_score(filename = 'abcdefg',title=test_sound.title,author=test_sound.author)
+        #result.make_csv('result.csv')
+        #result.make_midi('wwkrdmsquf3')
+        #result.make_midi_beat('def')
+        result.make_score(filename = 'abcdefg',title=test_sound.title,author=test_sound.author, test=True)
+        result.make_wav(filename='abcdefg', test=True)
+        from MeasureAccuracy import measure_accuracy
+        acc = measure_accuracy(pdp, 'abcdefg.wav')
     except Exception as e:
-
         print(e)
     

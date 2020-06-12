@@ -1,7 +1,7 @@
-import pretty_midi
-import csv
+#import pretty_midi
+#import csv
 import numpy as np
-from LilyNotation import *
+
 import os
 import sys
 import subprocess
@@ -15,7 +15,7 @@ class note:
         self.time = start
         self.velocity = velocity
 
-class accord:
+class accord_ds:
     def __init__(self):
         self.vice = 0
         self.notes = []
@@ -44,10 +44,9 @@ class accord:
         for note in self.notes:
             if note.time < self.time:
                 self.time = note.time
-            
 
 class score:
-    def __init__(self, time_resolution):
+    def __init__(self, time_resolution, sample_rate):
         self.accords_left = []
         self.accords_right = []
         self.accords = []
@@ -55,11 +54,12 @@ class score:
         self.time_resolution = time_resolution
         self.key = 'c'
         self.interval = 0
+        self.sample_rate = sample_rate
 
     def push_note(self, pitch_num, s, e, velocity, tempo):
         tnote = note(pitch_num, s, velocity)
         if len(self.accords)==0:
-            tmp_accord = accord()
+            tmp_accord = accord_ds()
             tmp_accord.tempo = tempo
             tmp_accord.push_to_accord(tnote)
             self.accords.append(tmp_accord)
@@ -67,7 +67,7 @@ class score:
         elif abs(tnote.time - self.accords[-1].notes[-1].time) >= self.accord_th:
             self.accords[-1].calc_avg_start()
             self.accords[-1].calc_avg_velocity()
-            tmp_accord = accord()
+            tmp_accord = accord_ds()
             tmp_accord.tempo = tempo
             tmp_accord.push_to_accord(tnote)
             self.accords.append(tmp_accord)
@@ -76,12 +76,19 @@ class score:
             self.accords[-1].push_to_accord(tnote)
 
     def push_finished(self):
+        print('Post Process...')
         self.push_note(-10, self.accords[-1].notes[-1].time+320, self.accords[-1].notes[-1].time+320, -10, 0)
         self.accords[-1].vice=-1
         self.accords[-1].time = self.accords[-2].notes[-1].time+320
+        print('\tMark Beat...',end=" ")
         self.mark_beat()
+        print('Done')
+        print('\tMark Symbol...',end=" ")
         self.mark_symboles()
+        print('Done')
+        print('\tDivide Hands...',end=" ")
         self.divide_hands()
+        print('Done')
         self.detect_key()
 
     def mark_symboles(self):
@@ -130,7 +137,7 @@ class score:
                 symbol_accords.append(self.accords[i])
 
             if i in accents and bounds[i] != 0:
-                tmp = accord()
+                tmp = accord_ds()
                 tmp.vice = -8
 
                 symbol_accords.append(tmp)
@@ -138,19 +145,19 @@ class score:
                 change = True
      
             if bounds[i-1] != 0 and bounds[i] == 0 :
-                tmp = accord()
+                tmp = accord_ds()
                 tmp.vice = -6
 
                 symbol_accords.append(tmp)
 
             if bounds[i-1] <3 and bounds[i] == 3 :
-                tmp = accord()
+                tmp = accord_ds()
                 tmp.vice = -7
 
                 symbol_accords.append(tmp)
 
             if bounds[i-1] == 3 and bounds[i] < 3:
-                tmp = accord()
+                tmp = accord_ds()
                 tmp.vice = -4
                 startdecrecendo = i
                 symbol_accords.append(tmp)
@@ -158,29 +165,29 @@ class score:
 
             if bounds[i-1] == 0 and bounds[i] > 0 :
 
-                tmp = accord()
+                tmp = accord_ds()
                 tmp.vice = -3
                 startcrecendo = i
                 symbol_accords.append(tmp)
 
             if startdecrecendo != 0 and bounds[i]<bounds[i+1] :
-                tmp = accord()
+                tmp = accord_ds()
                 tmp.vice = -5
                 startdecrecendo = 0
                 symbol_accords.append(tmp)
             elif startdecrecendo != 0 and i - startdecrecendo > 20 :
-                tmp = accord()
+                tmp = accord_ds()
                 tmp.vice = -5
                 startdecrecendo = 0
                 symbol_accords.append(tmp)
 
             if startcrecendo != 0 and bounds[i]>bounds[i+1] :
-                tmp = accord()
+                tmp = accord_ds()
                 tmp.vice = -5
                 startcrecendo = 0
                 symbol_accords.append(tmp)
             elif startcrecendo != 0 and i-startcrecendo > 30 :
-                tmp = accord()
+                tmp = accord_ds()
                 tmp.vice = -5
                 startcrecendo = 0
                 symbol_accords.append(tmp)
@@ -200,6 +207,9 @@ class score:
 
 
     def detect_key(self):
+        from LilyNotation import LUT
+        from LilyNotation import LUT_minor
+
         pitch_count = [0 for _ in range (0, 88)]
         for accord in self.accords_left:
             if accord.vice==0:
@@ -260,7 +270,6 @@ class score:
                         count_up += 1
                     else:
                         count_down += 1
-        print("오른손, 왼손 : ", count_up, count_down)
 
         self.accords_left = []
         self.accords_right = []
@@ -269,8 +278,8 @@ class score:
 
             if accord_it.beat > 0:
 
-                accord_left = accord()
-                accord_right = accord()
+                accord_left = accord_ds()
+                accord_right = accord_ds()
                 accord_left.time = self.accords[i].time
                 accord_right.time = self.accords[i].time
 
@@ -285,7 +294,7 @@ class score:
                     self.accords_left.append(accord_left)
                     self.accords_left[-1].beat = accord_it.beat
                     if len(accord_right.notes)==0:
-                        rest = accord()
+                        rest = accord_ds()
                         rest.vice = -1
                         rest.beat = accord_it.beat
                         self.accords_right.append(rest)
@@ -293,7 +302,7 @@ class score:
                     self.accords_right.append(accord_right)
                     self.accords_right[-1].beat = accord_it.beat
                     if len(accord_left.notes)==0:
-                        rest = accord()
+                        rest = accord_ds()
                         rest.vice = -1
                         rest.beat = accord_it.beat
                         self.accords_left.append(rest)
@@ -384,7 +393,9 @@ class score:
             return 0
 
         
-    def make_score(self, filename='test', title='test', author = ''):
+    def make_score(self, filename='test', title='test', author = '', test=False):
+        print('Translate to Lilipond...',end=" ")
+        from LilyNotation import lily_notation
         self.bar = 4
         lily_string = lily_notation(self.accords_left, self.accords_right, self.bar, self.key, title, midi=0, author = author, bpm = 15 / (self.interval * self.time_resolution))
         try:
@@ -393,12 +404,22 @@ class score:
             f.close()
         except Exception as e:
             print(e)
+        print('Done')
+        print('Export PDF file...',end=" ")
         p = subprocess.Popen(filename+".ly", shell=True).wait()
-        #os.remove(filename+".ly")
-        #os.remove(filename+".log")
-        #shutil.move(filename+'.pdf','../MJJ_first_web/flaskr/static/assets/pdf/'+filename+'.pdf' )
+        if not test:
+            os.remove(filename+".log")
+            os.remove(filename+".ly")
+            shutil.move(filename+'.pdf','../MJJ_first_web/flaskr/static/assets/pdf/'+filename+'.pdf' )
+        print('Done')
+    
+    def make_wav(self, filename='output', test=False):
+        from ScoreToWAV import score_to_wav
+        score_to_wav(self, filename, self.sample_rate)
+        if not test:
+            shutil.move(filename+'.wav','../MJJ_first_web/flaskr/static/assets/mid/'+filename+'.wav' )
 
-
+    '''
     def make_midi(self, filename='output'):
         midi = pretty_midi.PrettyMIDI(initial_tempo = 120)
         piano = pretty_midi.Instrument(program=1)
@@ -433,14 +454,11 @@ class score:
                 
                 for j in range(len(accord_it.notes)):
                     note_it = accord_it.notes[j]
-                    print(note_it.pitch, end= " ")
                     midi_note = pretty_midi.Note(pitch=int(note_it.pitch+21), start=start_time, end=end_time, velocity=100)
                     piano.notes.append(midi_note)
             
                 start_time = start_time + (accord_it.beat)*self.interval*self.time_resolution
 
-            else:
-                print('#',accord_it.vice, end= " ")
 
         start_time = 3
         for i in range(len(self.accords_right)):
@@ -463,7 +481,7 @@ class score:
         midi.instruments.append(piano)
         midi.write(filename+'.mid')
         print("midi generated")
-    
+
     def make_csv(self,filename) :
         csv.register_dialect(
             'mydialect',
@@ -504,11 +522,14 @@ class score:
                     velocity = int(row[2])
                     tempo = float(row[3])
                     self.push_note(pitch, start, start+25, velocity, tempo)
+    '''
+
+    
+
 
 
 
 if __name__=='__main__':
-    
     result = score(0)
     result.read_csv('result.csv')
     result.push_finished()

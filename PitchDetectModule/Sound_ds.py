@@ -12,52 +12,9 @@ from os import rename
 import array
 from pydub import AudioSegment
 import youtube_dl
-import time
-import numpy as np
-
-
-
-def Write_wav(filename, input, sample_rate=16000, value_size=2, num_channels=1):
-    bytes_per_sample = value_size
-    bits_per_sample = bytes_per_sample * 8
-    byte_rate = sample_rate * bytes_per_sample * num_channels
-    value_count = len(input)
-
-    with open(filename,'wb') as write_file:
-        #write riff
-        write_file.write(b'RIFF')
-        write_file.write((36 + bytes_per_sample * num_channels * value_count).to_bytes(4,byteorder='little',signed=False))
-        write_file.write(b'WAVE')
-
-        #write fmt
-        write_file.write(b'fmt ')
-        fmtchunksize = 16
-        fmtaudioformat = 1
-        write_file.write(fmtchunksize.to_bytes(4,byteorder='little',signed = False))
-        write_file.write(fmtaudioformat.to_bytes(2,byteorder='little',signed = False))
-        write_file.write(num_channels.to_bytes(2,byteorder='little',signed = False))
-        write_file.write(sample_rate.to_bytes(4,byteorder='little',signed = False))
-        write_file.write(byte_rate.to_bytes(4,byteorder='little',signed = False))
-        write_file.write(num_channels*bytes_per_sample.to_bytes(2,byteorder='little',signed = False))
-        write_file.write(bits_per_sample.to_bytes(2,byteorder='little',signed = False))
-
-        #write data
-        write_file.write(b'data')
-        write_file.write((bytes_per_sample * value_count * num_channels).to_bytes(4,byteorder='little',signed=False))
-
-        for i in range(0,value_count*num_channels):
-            if input[i]>32767:
-                input[i] = 32767
-            elif input[i]<-32768:
-                input[i] = -32768
-        for i in range(0, value_count*num_channels):
-            write_file.write(input[i].to_bytes(bytes_per_sample,byteorder='little',signed=True))
-
-
 
 class sound:
     def __init__(self, filename, file=True):
-        #start_time = time.time()
         self.data = []
         self.valid = True
         self.title = ' '
@@ -67,7 +24,6 @@ class sound:
         else:
             if not self.extract_from_link(filename):
                 self.valid = False
-        #print("time:", time.time()-start_time)
 
     def downmixing(self):
         downmixed = []
@@ -111,7 +67,6 @@ class sound:
             }]
             
         }
-
         with youtube_dl.YoutubeDL(options) as ydl:
             try:
                 print("Downloading...")
