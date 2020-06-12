@@ -99,6 +99,13 @@
                                 $("#progress_notice2").hide();
                                 $("#progress").hide();
                               </script>
+                         <audio id="player" controls>
+                        <source id="source" src="" type="audio/mpeg">
+                            Your browser does not support the audio element.
+                        </audio>
+                        <script>
+                            $('#player').hide();
+                        </script>
                         
                         <button type="button" class="btn btn-info" id="show_pdf"  >Show Sheet Music</button>
                         
@@ -107,10 +114,18 @@
                         </script>
 
 
+
+
                         <button type="button" class="btn btn-info" id="show_pdf_link"   >Show Sheet Music</button>
 
                         <script>
                             $('#show_pdf_link').hide();
+                        </script>
+
+                         <button type="button" class="btn btn-info" id="play_audio"   >Play Sheet Music</button>
+
+                        <script>
+                            $('#play_audio').hide();
                         </script>
 
                         <button type="button" class="btn btn-info" id="home_btn"  >Home</button>
@@ -118,10 +133,10 @@
                             $('#home_btn').hide();
                         </script>
 
-                        <!--onclick="location.href='{{url_for('youtube.download_pitch') }}'"  onsubmit = hide_form() action="{{url_for('youtube.youtube_link') }}"   -->
+
 
                         <style>
-                            .pdfobject-container {
+                            .pdfobject-container {s
                                 position:relative;
                                 top:75%;
                                 left:25%;

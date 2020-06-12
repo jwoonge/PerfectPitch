@@ -203,11 +203,13 @@ $("#home_btn").click(function javascript_onclick(){
 
   $("#results").hide();
   $("#home_btn").hide();
+  $("#play_audio").hide();
+  $("#player").hide()
   $("#show_pdf_link").hide();
   $("#show_pdf").hide();
   $("#upload_link_btn").show();
   $("#upload_file_btn").show();
-  
+  location.reload();
   
   
   
@@ -313,6 +315,7 @@ $("#link_finish").click(function (event) {
           $("#progress_notice").hide();
           $("#progress_notice2").hide();
           $("#show_pdf_link").show()
+          $("#play_audio").show()
           //$("#play_pdf").show()
           var blob=new Blob([response]);
 
@@ -392,7 +395,7 @@ $("#upload_finish").click(function (event) {
           $("#progress_notice").hide();
           $("#progress_notice2").hide();
           $("#show_pdf").show()
-          //$("#play_pdf").show()
+          $("#play_audio").show()
           var blob=new Blob([response]);
           var link=document.createElement('a');
           link.href=window.URL.createObjectURL(blob);
@@ -416,11 +419,120 @@ $("#upload_finish").click(function (event) {
     
       },
       error:function(request,status,error){
-        alert("code:"+request.status+"\n"+"message:"+'Incorrect File Format'+"\n");
+        alert("code:"+request.status+"\n"+"message:"+'Ivalid File'+"\n");
         location.reload();
        }
   });
 
 
 
+});
+$("#show_pdf").click(function javascript_onclick(){
+
+$("#results").show();
+$("#home_btn").show();
+var user_raw=new String(getip());
+var user_name = user_raw.replace(/\./gi,'');
+var user_name_form = {
+  'user' : user_name
+};
+var formData = new FormData();
+formData.append('name',user_name)
+$.ajax({
+  type: "POST",
+  url: "upload/showpdf",
+  data: formData,
+  processData: false,
+  contentType: false,
+  cache: false,
+  xhrFields: {
+    responseType : 'arraybuffer'
+  },
+  timeout: 600000,
+  success : function(response)
+  {
+
+
+
+    var options = {
+      pdfOpenParams: {
+          navpanes: 0,
+          toolbar: 0,
+          statusbar: 0,
+          view:"FitV",
+          pagemode:"thumbs",
+          page: 1
+      },
+      forcePDFJS: true,
+      PDFJS_URL:"../static/js/pdfjs/web/viewer.html"
+    }
+
+    var file = new Blob([response],{type : 'application/pdf'});
+    const fileURL = window.URL.createObjectURL(file);
+    var myPDF = PDFObject.embed(fileURL,"#pdf", options);
+
+    var el = document.querySelector("#results");
+    el.setAttribute("class", (myPDF) ?"success" :"fail");
+    window.open(fileURL);
+    $("#show_pdf").hide();
+
+
+
+
+
+
+  }
+
+});
+
+
+
+});
+
+$("#play_audio").click(function javascript_onclick(){
+
+$("#player").show();
+$("#home_btn").show();
+var user_raw=new String(getip());
+var user_name = user_raw.replace(/\./gi,'');
+var user_name_form = {
+  'user' : user_name
+};
+var formData = new FormData();
+formData.append('name',user_name)
+
+ $.ajax({
+  type: "POST",
+  url: "youtube/playaudio",
+  data: formData,
+  processData: false,
+  contentType: false,
+  cache: false,
+  xhrFields: {
+    responseType : 'blob'
+  },
+  timeout: 600000,
+        success: function( response ) {
+
+            var file = new Blob([response]);
+            var audio = new window.Audio();
+            audio.src=window.URL.createObjectURL(file)
+
+            $('audio #source').attr('src', audio.src);
+            //var audio = $("#player")[0];
+            //audio.play();
+            $('audio').get(0).load();
+            console.log("Finish Loading");
+            console.log(audio.src);
+            $('audio').get(0).play();
+            $("#play_audio").hide();
+
+        }
+
+
+
+
+
+
+});
 });
