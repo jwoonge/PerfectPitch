@@ -62,7 +62,7 @@ def show_pdf() :
 def play_audio() :
   try :
     user_name = str(request.form['name'])
-    filename = 'static/assets/audio/' + user_name + '.mp3'
+    filename = 'static/assets/mid/' + user_name + '.mp3'
     print("여기왓다")
     #filename = 'static/assets/audio/' + '2109625371' + '.mp3'
     response = make_response(send_file(filename,

@@ -80,7 +80,7 @@ def show_pdf() :
 def play_audio() :
   try :
     user_name = str(request.form['name'])
-    filename = 'static/assets/audio/' + user_name + '.mp3'
+    filename = 'static/assets/mid/' + user_name + '.mp3'
     response = make_response(send_file(filename,
                     # 다운받아지는 파일 이름.
                   as_attachment=True))
