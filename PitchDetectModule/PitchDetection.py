@@ -25,16 +25,25 @@ def get_interval(input_list, vmin=8, vmax=70):
         distance = 0
         for diff in diffs:
             left = abs(diff / interval - round(diff / interval))
-            distance += left / np.sqrt(interval)
+            #distance += left / np.sqrt(interval)
+            distance += left
         distances.append(distance)
 
     scores = max(distances)-np.array(distances)
-    scores = filters.gaussian_filter1d(scores,1)
-    convexes, _ = signal.find_peaks(scores)
-
+    #scores = filters.gaussian_filter1d(scores,1)
+    #convexes, _ = signal.find_peaks(scores)
+    '''
     tmp = scores[convexes]
     interval = convexes[np.argmax(tmp)] / 100 + 8
-
+    half_interval_index = (interval/2 -8)*100
+    if half_interval_index>50:
+        for convex in convexes:
+            if convex > half_interval_index-50 and convex<half_interval_index+50:
+                interval /= 2
+                print('반나눔')
+                break
+    '''
+    interval = np.argmax(scores)/100 + 8
     return interval
 
 def get_key_freq(key_count=88):
@@ -94,10 +103,10 @@ class pd_processor:
         velocities = (frame_sum / np.max(frame_sum) * 100) + 20
         frame_energy = np.sum((np.power(self.spec, 4)/100000000), axis=1)
         total_concaves, _ = signal.find_peaks(frame_energy, distance=15, height=max(frame_energy)/10)
-        interval = get_interval(total_concaves)/2
-
+        interval = get_interval(total_concaves)
+        
         self.result.interval = interval
-        #print('######',interval)
+        print('######',interval)
 
         ################# make metronome #################
         metronome = [total_concaves[0]]
@@ -195,8 +204,9 @@ class pd_processor:
                 if pitch_map[frame][freq][0] != 0 and self.spec[int(pitch_map[frame][freq][1])][freq]>1:
                     #if self.spec[frame][freq-1] < self.spec[frame][freq] and self.spec[frame][freq+1]<self.spec[frame][freq]:
                         #self.result.push_note(freq+8, frame, frame+40, self.spec[frame][freq])
-                    self.result.push_note(freq+8, frame, frame+40, int(velocities[frame]), pitch_map[frame][freq][0])
-                    count += 1
+                    if self.spec[int(pitch_map[frame][freq][1])][freq] > max(self.spec[int(pitch_map[frame][freq][1])])*0.1:
+                        self.result.push_note(freq+8, frame, frame+40, int(velocities[frame]), pitch_map[frame][freq][0])
+                        count += 1
 
         print("num_note : ", count)
         self.result.push_finished()
@@ -287,9 +297,10 @@ if __name__=='__main__':
         test_sound = sound('https://www.youtube.com/watch?v=NV43k7fq8jA') #흑건
         result = pdp.do(test_sound)
         result.make_csv('result.csv')
-        result.make_midi('abc')
+        result.make_midi('wwkrdmsquf3')
         result.make_midi_beat('def')
-        result.make_score()
-    except:
-        print('except')
+        result.make_score(filename = 'abcdefg',title=test_sound.title,author=test_sound.author)
+    except Exception as e:
+
+        print(e)
     

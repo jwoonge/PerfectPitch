@@ -7,6 +7,7 @@ import sys
 import subprocess
 from scipy.ndimage import filters
 from scipy import signal
+import shutil
 
 class note:
     def __init__(self, pitch, start, velocity):
@@ -82,7 +83,6 @@ class score:
         self.mark_symboles()
         self.divide_hands()
         self.detect_key()
-      
 
     def mark_symboles(self):
         velocities = []
@@ -251,6 +251,17 @@ class score:
             self.key = 'c'
 
     def divide_hands(self):
+        count_up = 0
+        count_down = 0
+        for ac in self.accords:
+            if ac.vice == 0:
+                for note in ac.notes:
+                    if note.pitch > 38:
+                        count_up += 1
+                    else:
+                        count_down += 1
+        print("오른손, 왼손 : ", count_up, count_down)
+
         self.accords_left = []
         self.accords_right = []
         for i in range(len(self.accords)):
@@ -291,41 +302,29 @@ class score:
                 self.accords_right.append(accord_it)
                 #self.accords_left.append(accord_it)
         
+        sum = 0
+        for ac in self.accords_left:
+            sum += ac.beat
+        sum = 0
+        for ac in self.accords_right:
+            sum += ac.beat
         i=0
         accords_left = []
-        while i<len(self.accords_left)-1:
-            if self.accords_left[i].vice==0 and self.accords_left[i+1].vice!=0:
+        while i<len(self.accords_left):
+            if self.accords_left[i].vice==0:
                 start = self.accords_left[i]
                 beatsum = self.accords_left[i].beat
-                while i<len(self.accords_left)-1 and self.accords_left[i+1].vice!=0:
-                    i+=1
+                i += 1
+                while i<len(self.accords_left) and self.accords_left[i].vice != 0:
                     beatsum += self.accords_left[i].beat
+                    i += 1
                 accords_left.append(start)
                 accords_left[-1].beat = beatsum
             else:
                 accords_left.append(self.accords_left[i])
-            i+=1
-        accords_left.append(self.accords_left[-1])
-        self.accords_left = accords_left
-
-        i=0
-        accords_right = []
-        while i<len(self.accords_right):
-            if self.accords_right[i].vice!=0:
-                start = self.accords_right[i]
-                beatsum = 0
-                while i<len(self.accords_right) and self.accords_right[i].vice!=0:
-                    beatsum += self.accords_right[i].beat
-                    i += 1
-                accords_right.append(start)
-                accords_right[-1].beat = beatsum
-            else:
-                accords_right.append(self.accords_right[i])
                 i += 1
-        self.accords_right = accords_right
         
-        #del(self.accords_left[-1])
-
+        self.accords_left = accords_left
 
     def mark_beat(self):
         ############ 
@@ -362,6 +361,7 @@ class score:
                 self.accords[indexes[index_bar][-1]].beat = 1
 
         if double:
+            self.interval = self.interval/2
             for i in range(len(self.accords)):
                 self.accords[i].beat = int(round(self.accords[i].beat*2))
         
@@ -384,19 +384,18 @@ class score:
             return 0
 
         
-    def make_score(self, filename='test', title='test'):
+    def make_score(self, filename='test', title='test', author = ''):
         self.bar = 4
-        lily_string = lily_notation(self.accords_left, self.accords_right, self.bar, self.key, title, midi=0)
+        lily_string = lily_notation(self.accords_left, self.accords_right, self.bar, self.key, title, midi=0, author = author, bpm = 15 / (self.interval * self.time_resolution))
         try:
-            f=open(filename+".ly","w")
+            f=open(filename+".ly","w", encoding = "utf-8")
             f.write(lily_string)
             f.close()
-        except:
-            print("except")
+        except Exception as e:
+            print(e)
         p = subprocess.Popen(filename+".ly", shell=True).wait()
-        os.remove(filename+".ly")
-        os.remove(filename+".log")
-        import shutil
+        #os.remove(filename+".ly")
+        #os.remove(filename+".log")
         #shutil.move(filename+'.pdf','../MJJ_first_web/flaskr/static/assets/pdf/'+filename+'.pdf' )
 
 
@@ -506,10 +505,12 @@ class score:
                     tempo = float(row[3])
                     self.push_note(pitch, start, start+25, velocity, tempo)
 
+
+
 if __name__=='__main__':
     
     result = score(0)
-    result.read_csv('작은별진짜.csv')
+    result.read_csv('result.csv')
     result.push_finished()
-    result.make_midi_beat('작은별진짜')
+    result.make_midi_beat('result')
     result.make_score()

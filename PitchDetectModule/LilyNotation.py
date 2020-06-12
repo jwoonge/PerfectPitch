@@ -1,11 +1,12 @@
 import Accord as ac
 import copy
 
-def lily_notation(lh_sheet, rh_sheet, bar, key, filename, midi=0):
-    ret = "\\version \"2.20.0\"\n\\header{\n  title = \"" + filename + "\"\n}"
-    RH_head = "rhMusic = {\n\t"
+def lily_notation(lh_sheet, rh_sheet, bar, key, filename, author, bpm, midi=0):
+    ret = "\\version \"2.20.0\"\n\\header{\n  dedication=\"   \"\n  title = \"" + filename + "\"\n  subtitle = \"     \"\n  composer = \"" + author + "\"\n  arranger = \"   \"\n}"
+    RH_head = "rhMusic = {\n\t\\tempo 4 = "+str(int(bpm))+"\n\t"
     LH_head = "lhMusic = {\n\t"
     minor = False
+
     if key in ['f', 'bes', 'ees', 'aes', 'des', 'ges', 'ces']:
         minor = True
 
@@ -22,7 +23,7 @@ def lily_notation(lh_sheet, rh_sheet, bar, key, filename, midi=0):
     LH_body = get_body(lh_sheet, minor)
 
     fin_bar = "\\bar \"|.\""
-    fin = "\n}\n\n"
+    fin = fin_bar + "\n}\n\n"
     midi_str = ""
     if midi>0:
         midi_str = "  \\midi { \n    \\tempo 4 = " + str(midi) + "\n  }\n"
@@ -69,6 +70,7 @@ def accord_to_string(accord, minor):
         else:
             gye, oc = LUT_minor(accord.notes[0].pitch)
         body += gye
+        
         for i in range(0, oc - 2):
             body += '\''
         for i in range(0, 2 - oc):
@@ -76,6 +78,27 @@ def accord_to_string(accord, minor):
         body += " "
         last = oc
         
+        last_pitch = accord.notes[0].pitch
+        for i in range(1, len(accord.notes)):
+            gye, oc = LUT(accord.notes[i].pitch)
+            body += gye
+            if last_pitch <= accord.notes[i].pitch:
+                if accord.notes[i].pitch - last_pitch >= 7:
+                    body += "\'"
+                for j in range(oc - last - 1):
+                    body += "\'"
+
+            else:        
+                if accord.notes[i].pitch - last_pitch < 7:
+                    body += ","
+                for j in range(last - oc - 1):
+                    body += ","
+            body += " "
+            last = oc
+            last_pitch = accord.notes[i].pitch
+            
+        '''
+        ####################원래코드
         for i in range(1, len(accord.notes)):
             gye, oc = LUT(accord.notes[i].pitch)
             body += gye
@@ -84,6 +107,8 @@ def accord_to_string(accord, minor):
             for j in range(last-oc):
                 body += ","
             body += " "
+            last = oc
+        '''
         
         return start + body + fin
 
@@ -116,8 +141,8 @@ def vice_to_string(accord):
         #ret += '\\ bar \"\" \\break\n    '
         ret += ' '
     elif(accord.vice == -12):#divide_bar
-        ret += ' | \n'
-        #ret += " "
+        #ret += ' | \n'
+        ret += " "
     return ret
 
 
@@ -147,7 +172,7 @@ def divide_beat(accords, bar):
 
     for accord in accords:
         accord.beat = round(accord.beat)
-        quo = (left + accord.beat) // bar
+        quo = int((left + accord.beat)/bar)
 
         if accord.beat == 0:
             new.append(accord)
@@ -171,12 +196,12 @@ def divide_beat(accords, bar):
                     
                     new.append(forward)
                     bar_count += 1
+
+                    if accord.vice==0:
+                        new.append(tie)
                     new.append(bd)
                     if bar_count % enter_th == 0:
                         new.append(enter)
-                    
-                    if accord.vice==0:
-                        new.append(tie)
                     backward = copy.deepcopy(accord)
                     backward.beat = accord.beat - (bar-left)
                     new.append(backward)
@@ -188,18 +213,20 @@ def divide_beat(accords, bar):
                 forward.beat = bar - left
                 new.append(forward)
                 bar_count += 1
+                if accord.vice==0:
+                    new.append(tie)
                 new.append(bd)
 
                 if bar_count % enter_th == 0:
                     new.append(enter)
                 
                 for i in range(quo-1):
-                    if accord.vice==0:
-                        new.append(tie)
-
                     whole_note = copy.deepcopy(accord)
                     whole_note.beat = bar
                     new.append(whole_note)
+                    
+                    if accord.vice==0:
+                        new.append(tie)
 
                     bar_count += 1
                     new.append(bd)
@@ -218,13 +245,14 @@ def divide_beat(accords, bar):
 
                 left = (left + accord.beat) % bar
 
+    
     i = -1
-    accord = new[i]
-    while accord.beat==0:
+    accord_last = new[i]
+    while abs(i) < len(new) and accord.beat==0:
         i += -1
-        accord = new[i]
+        accord_last = new[i]
     new[i].beat = new[i].beat + bar - left
-
+    
     '''
     barsum = []
     i = 0
@@ -244,25 +272,24 @@ def divide_beat(accords, bar):
 
 def merge_rests(accords):
     new = []
-
     i = 0
     while i<len(accords):
         if accords[i].vice==-1:
-            j = 1
+            vice = []
+            new.append(accords[i])
             beatsum = accords[i].beat
-            while i+j < len(accords)-1 and accords[i+j].vice!=0:
-                if accords[i+j].vice!=-1:
-                    new.append(accords[i+j])
-                j += 1
-                beatsum += accords[i+j].beat
-            tmpaccord = accords[i]
-            tmpaccord.beat = beatsum
-            new.append(tmpaccord)
-            i += j
+            i += 1
+            while i < len(accords) and accords[i].vice!=0:
+                beatsum += accords[i].beat
+                if accords[i].vice!=-1:
+                    vice.append(accords[i])
+                i += 1
+            new[-1].beat = beatsum
+            for j in range(len(vice)):
+                new.append(vice[j])
         else:
             new.append(accords[i])
             i += 1
-
     return new
 
 def translate_beat(accords):
@@ -302,4 +329,3 @@ def translate_beat_sub(beat):
         if left == 0:
             break
     return ret
-

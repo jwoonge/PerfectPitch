@@ -60,6 +60,8 @@ class sound:
         #start_time = time.time()
         self.data = []
         self.valid = True
+        self.title = ' '
+        self.author = ' '
         if '.mp3' in filename or '.wav' in filename:
             self.extract_from_file(filename)
         else:
@@ -107,13 +109,20 @@ class sound:
                 'preferredcodec': FORMAT,
                 'preferredquality': '192',
             }]
+            
         }
 
         with youtube_dl.YoutubeDL(options) as ydl:
             try:
                 print("Downloading...")
+                info_dict = ydl.extract_info(link,download=False)
+                ydl.prepare_filename(info_dict)
                 ydl.download([link])
+
+                self.title = info_dict['title']
+                self.author = info_dict['uploader']
             except Exception as e:
+                
                 return False
             print("Download Complete")
         self.extract_from_file('temp.mp3')

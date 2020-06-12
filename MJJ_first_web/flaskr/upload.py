@@ -27,13 +27,14 @@ def upload_file() :
           pdp = PitchDetection.pd_processor()
           result = pdp.do(Sound_ds.sound(f.filename))
           result.make_midi_beat(filename_mid)
-          result.make_score(filename_mid)
+          result.make_score(filename_mid,title=testname)
           filename_mid = 'static/assets/pdf/' + filename_mid
 
           response = make_response(send_file(filename_mid+'.pdf',
                     # 다운받아지는 파일 이름.
                   as_attachment=True))
-        except :
+        except Exception as e :
+          print(e)
           return jsonify(massage='Incorrect File Format'),500
 
         return response
@@ -62,8 +63,7 @@ def show_pdf() :
 def play_audio() :
   try :
     user_name = str(request.form['name'])
-    filename = 'static/assets/mid/' + user_name + '.mp3'
-    print("여기왓다")
+    filename = 'static/assets/mid/' + user_name + '.wav'
     #filename = 'static/assets/audio/' + '2109625371' + '.mp3'
     response = make_response(send_file(filename,
                     # 다운받아지는 파일 이름.

@@ -34,7 +34,7 @@ def youtube_link() :
           result = pdp.do(Valid)
           result.make_midi_beat(filename_mid)
 
-          result.make_score(filename_mid)
+          result.make_score(filename_mid,title=Valid.title,author=Valid.author)
           filename_mid = 'static/assets/pdf/' + filename_mid
 
           '''
@@ -50,7 +50,8 @@ def youtube_link() :
           return response
         else:
           return jsonify(massage='This is an incorrect YouTube link.'), 500
-      except :
+      except Exception as e :
+        print(e)
         return jsonify(massage='This is an incorrect YouTube link.'), 500
     else :
       return jsonify(massage='This is an incorrect YouTube link.'), 500
@@ -80,7 +81,7 @@ def show_pdf() :
 def play_audio() :
   try :
     user_name = str(request.form['name'])
-    filename = 'static/assets/mid/' + user_name + '.mp3'
+    filename = 'static/assets/mid/' + user_name + '.wav'
     response = make_response(send_file(filename,
                     # 다운받아지는 파일 이름.
                   as_attachment=True))
