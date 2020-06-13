@@ -10,7 +10,7 @@ import sys
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))))
 from PitchDetectModule import PitchDetection
 from PitchDetectModule import Sound_ds
-
+import time
 
 bp = Blueprint('youtube', __name__, url_prefix='/youtube')
 
@@ -18,7 +18,7 @@ bp = Blueprint('youtube', __name__, url_prefix='/youtube')
 
 @bp.route('/translate_youtube_link',methods=['GET','POST'])
 def youtube_link() :
-
+    starttime= time.time()
 
     if request.method == 'POST' :
       try:
@@ -34,13 +34,19 @@ def youtube_link() :
           result = pdp.do(Valid)
 
           result.make_score(filename_mid,title=Valid.title,author=Valid.author)
+          endtime= time.time() - starttime
+
+          starttesttime= time.time()
           result.make_wav(filename_mid)
           
           from PitchDetectModule import MeasureAccuracy          ###
           filename_wav = 'flaskr/static/assets/mid/' + filename_mid
-          accuracy = MeasureAccuracy.measure_accuracy(pdp, filename_wav+'.wav')    ####
+          accuracy = MeasureAccuracy.measure_accuracy(pdp, filename_wav+'.wav', username=username)    ####
           print('ACC : ',round(accuracy,2))        ####
 
+          testendtime=time.time()-starttesttime
+          testing = open(username+'.txt','a',encoding="utf-8")
+          testing.write(Valid.title+' '+ Valid.author+' '+str(Valid.time) +' '+ str(round(endtime,2)) +' '+ str(round(testendtime,2)) +' '+ str(round(accuracy,2))+'\n')
           filename_mid = 'static/assets/pdf/' + filename_mid
 
           '''

@@ -14,11 +14,13 @@ from pydub import AudioSegment
 import youtube_dl
 
 class sound:
-    def __init__(self, filename, file=True):
+    def __init__(self, filename, username, file=True):
         self.data = []
         self.valid = True
         self.title = ' '
         self.author = ' '
+        self.time=' '
+        self.username=username
         if '.mp3' in filename or '.wav' in filename:
             self.extract_from_file(filename)
         else:
@@ -56,7 +58,7 @@ class sound:
             'format':'bestaudio/best',
             'extractaudio':True,
             'audioformat':FORMAT,
-            'outtmpl' : 'temp.%(ext)s',
+            'outtmpl' : self.username+'.%(ext)s',
             'noplaylist':True,
             'quiet':True,
             'nocheckcertificate':True,
@@ -76,10 +78,11 @@ class sound:
 
                 self.title = info_dict['title']
                 self.author = info_dict['uploader']
+                self.time = info_dict['duration']
             except Exception as e:
                 
                 return False
             print("Download Complete")
-        self.extract_from_file('temp.mp3')
-        os.remove('temp.mp3') ###########
+        self.extract_from_file(self.username+'.mp3')
+        os.remove(self.username+'.mp3') ###########
         return True

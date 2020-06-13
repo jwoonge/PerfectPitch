@@ -6,11 +6,11 @@ from dtw import dtw
 from PitchDetection import pd_processor
 from scipy import signal
 
-def measure_accuracy(pdp, result_wav):
+def measure_accuracy(pdp, result_wav, username):
     print('Measure Accuracy...')
     source = spec_normalize(pdp.spec)
 
-    result_source = sound(result_wav)
+    result_source = sound(result_wav, username)
     pdp_r = pd_processor()
     pdp_r.sample_rate = result_source.sample_rate
     result = spec_normalize(pdp_r.get_spectrogram(result_source))
