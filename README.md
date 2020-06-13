@@ -21,7 +21,6 @@ PerfectPitch is a python-based software for
 
 ---  
 
-
 ## Module Explaination  
 
 ### PitchDetectionModule  
@@ -32,7 +31,7 @@ This Module is divided into 4 parts :
 *  export datas as .pdf file format  
 *  (measure the accuracy by own algorithm)  
   
-You can find more detailed information & usage at ['PitchDetectionModule/ReadMe.md'](links)  
+You can find more detailed information & usage at ['PitchDetectionModule/ReadMe.md'](https://github.com/jwoonge/PerfectPitch/tree/master/PitchDetectModule)  
   
 
 ### MeasureAccuracyModule  
@@ -55,17 +54,22 @@ MJJ First Web is a python and flask -based responsive web.
 *  jquery/ajax for asynchronous communication with client and server  
 As Multi-user Access control is based on public IP, there can be a risk of conflect when using same public IP.  
   
-You can find more detailed information & usage at ['MJJ_first_web/ReadMe.md'](links)  
-  
 
 ---  
 
 
 ## Usages  
 
-please refer to  
-['PitchDetectionModule/ReadMe.md'](links)  
-['MJJ_first_web/ReadMe.md'](links)    
+You can run PerfectPitch locally by
+```
+$ python PerfectPitch.py https://www.youtube.com/your?links  
+$ python PerfectPitch.py https://www.youtube.com/your?links v
+```
+argument v means 'want to measure accuracy'  
+
+if you want more information, please refer to  
+['PitchDetectionModule/ReadMe.md'](https://github.com/jwoonge/PerfectPitch/tree/master/PitchDetectModule)  
+
 
 ---  
 
