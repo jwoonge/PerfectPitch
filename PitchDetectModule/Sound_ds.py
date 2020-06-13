@@ -14,7 +14,7 @@ from pydub import AudioSegment
 import youtube_dl
 
 class sound:
-    def __init__(self, filename, username, file=True):
+    def __init__(self, filename, username=" ", file=True):
         self.data = []
         self.valid = True
         self.title = ' '

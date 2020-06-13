@@ -39,7 +39,7 @@ def youtube_link() :
           starttesttime= time.time()
           result.make_wav(filename_mid)
           
-          from PitchDetectModule import MeasureAccuracy          ###
+          from MeasureAccuracyModule import MeasureAccuracy          ###
           filename_wav = 'flaskr/static/assets/mid/' + filename_mid
           accuracy = MeasureAccuracy.measure_accuracy(pdp, filename_wav+'.wav', username=username)    ####
           print('ACC : ',round(accuracy,2))        ####

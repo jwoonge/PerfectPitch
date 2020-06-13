@@ -12,7 +12,7 @@ from scipy.ndimage import filters
 import time
 #import matplotlib.pyplot as plt
 #import csv
-from Accord import score
+from Score_ds import score
 
 def get_interval(input_list, vmin=8, vmax=70):
     diffs = []

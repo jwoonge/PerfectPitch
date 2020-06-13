@@ -1,0 +1,14 @@
+click==7.1.2
+dtw==1.4.0
+Flask==1.1.2
+itsdangerous==1.1.0
+Jinja2==2.11.2
+MarkupSafe==1.1.1
+mido==1.2.9
+numpy==1.18.5
+pretty-midi==0.2.9
+pydub==0.24.1
+scipy==1.4.1
+six==1.15.0
+Werkzeug==1.0.1
+youtube-dl==2020.6.6

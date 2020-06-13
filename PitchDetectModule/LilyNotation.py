@@ -1,6 +1,6 @@
-from Accord import accord_ds
-from Accord import score
-from Accord import note
+from Score_ds import accord
+from Score_ds import score
+from Score_ds import note
 import copy
 
 def lily_notation(lh_sheet, rh_sheet, bar, key, filename, author, bpm, midi=0):
@@ -36,11 +36,11 @@ def lily_notation(lh_sheet, rh_sheet, bar, key, filename, author, bpm, midi=0):
 
 def get_body(accords, minor):
     body = ""
-    for accord in accords:
-        if accord.vice !=0 :
-            body += vice_to_string(accord)
+    for accord_it in accords:
+        if accord_it.vice !=0 :
+            body += vice_to_string(accord_it)
         else:
-            body += accord_to_string(accord, minor)
+            body += accord_to_string(accord_it, minor)
     return body
 
 def beat_table(beat):
@@ -61,18 +61,18 @@ def LUT_minor(pitch_num):
     gye = gyeLUT[gye]
     return gye, oc
 
-def accord_to_string(accord, minor):
+def accord_to_string(accord_it, minor):
     table = ['a','b','c','d','e','f','g']
 
-    if len(accord.notes)>0:
+    if len(accord_it.notes)>0:
         start = "\\relative {<"
         body = ""
-        fin = ">" + beat_table(accord.beat) + '} '
+        fin = ">" + beat_table(accord_it.beat) + '} '
 
         if not minor:
-            gye, oc = LUT(accord.notes[0].pitch)
+            gye, oc = LUT(accord_it.notes[0].pitch)
         else:
-            gye, oc = LUT_minor(accord.notes[0].pitch)
+            gye, oc = LUT_minor(accord_it.notes[0].pitch)
         body += gye
         
         for i in range(0, oc - 2):
@@ -81,20 +81,20 @@ def accord_to_string(accord, minor):
             body += ','
         body += " "
         
-        last_pitch = accord.notes[0].pitch
+        last_pitch = accord_it.notes[0].pitch
         last_gye = gye
         last_oc = oc
 
-        for i in range(1, len(accord.notes)):
+        for i in range(1, len(accord_it.notes)):
             last_index = table.index(last_gye[0])
-            gye, oc = LUT(accord.notes[i].pitch)
+            gye, oc = LUT(accord_it.notes[i].pitch)
             left = []
             right = []
             for j in range(1,4):
                 left.append(table[(last_index-j)%7])
                 right.append(table[(last_index+j)%7])
             body += gye
-            dif = accord.notes[i].pitch - last_pitch
+            dif = accord_it.notes[i].pitch - last_pitch
             oc_dif = int((dif)/12)
             if dif < 0 and gye[0] in right:
                 oc_dif -= 1
@@ -105,7 +105,7 @@ def accord_to_string(accord, minor):
             for j in range(-oc_dif):
                 body += ","
             body += " "
-            last_pitch = accord.notes[i].pitch
+            last_pitch = accord_it.notes[i].pitch
             last_gye = gye
             last_oc = oc
         
@@ -114,32 +114,32 @@ def accord_to_string(accord, minor):
     else:
         return ""
 
-def vice_to_string(accord):
+def vice_to_string(accord_it):
     ret = ""
-    if(accord.vice == -1):##rest
-        ret += " r" + beat_table(accord.beat)
-    elif(accord.vice == -2):##연음줄
+    if(accord_it.vice == -1):##rest
+        ret += " r" + beat_table(accord_it.beat)
+    elif(accord_it.vice == -2):##연음줄
         ret += "  ~"
-    elif(accord.vice == -3):##crec
+    elif(accord_it.vice == -3):##crec
         ret += " \\< "
-    elif(accord.vice == -4):##decrec
+    elif(accord_it.vice == -4):##decrec
         ret += " \\> "
-    elif(accord.vice == -5):#end crec or decrec
+    elif(accord_it.vice == -5):#end crec or decrec
         ret += " \\! "
-    elif(accord.vice == -6):#piano
+    elif(accord_it.vice == -6):#piano
         ret += ' \\p '
-    elif(accord.vice == -7):#forte
+    elif(accord_it.vice == -7):#forte
         ret += ' \\f '
-    elif(accord.vice == -8):#accent
+    elif(accord_it.vice == -8):#accent
         ret += ' -> '
-    elif(accord.vice == -9):#rit
+    elif(accord_it.vice == -9):#rit
         ret += '\\mark \"rit\"'
-    elif(accord.vice == -10):#accel
+    elif(accord_it.vice == -10):#accel
         ret += '\\mark \"accel\"'
-    elif(accord.vice == -11):#enter
+    elif(accord_it.vice == -11):#enter
         #ret += '\\ bar \"\" \\break\n    '
         ret += ' '
-    elif(accord.vice == -12):#divide_bar
+    elif(accord_it.vice == -12):#divide_bar
         #ret += ' | \n'
         ret += " "
     return ret
@@ -151,17 +151,17 @@ def divide_beat(accords, bar):
     bar = bar * 4
     enter_th = 4
 
-    tie = accord_ds()
+    tie = accord()
     tie.vice = -2
     tie.beat = 0
     tie.notes = []
 
-    enter = accord_ds()
+    enter = accord()
     enter.vice = -11
     enter.beat = 0
     enter.notes = []
 
-    bd = accord_ds()
+    bd = accord()
     bd.vice = -12
     bd.beat = 0
     bd.notes = []
@@ -169,20 +169,20 @@ def divide_beat(accords, bar):
     left = 0
     bar_count = 0
 
-    for accord in accords:
-        accord.beat = round(accord.beat)
-        quo = int((left + accord.beat)/bar)
+    for accord_it in accords:
+        accord_it.beat = round(accord_it.beat)
+        quo = int((left + accord_it.beat)/bar)
 
-        if accord.beat == 0:
-            new.append(accord)
+        if accord_it.beat == 0:
+            new.append(accord_it)
         else:
             if quo <= 1: # 온음표가 안생기는 경우
-                if left + accord.beat < bar: # 안넘어가는 경우
-                    new.append(accord)
-                    left += accord.beat
+                if left + accord_it.beat < bar: # 안넘어가는 경우
+                    new.append(accord_it)
+                    left += accord_it.beat
                 
-                elif left + accord.beat == bar: # 안넘어가고 딱 꽉찬 경우
-                    new.append(accord)
+                elif left + accord_it.beat == bar: # 안넘어가고 딱 꽉찬 경우
+                    new.append(accord_it)
                     bar_count += 1
                     new.append(bd)
                     if bar_count % enter_th == 0:
@@ -190,29 +190,29 @@ def divide_beat(accords, bar):
                     left = 0
             
                 else: # 마디 하나 넘어가는 경우
-                    forward = copy.deepcopy(accord)
+                    forward = copy.deepcopy(accord_it)
                     forward.beat = bar-left
                     
                     new.append(forward)
                     bar_count += 1
 
-                    if accord.vice==0:
+                    if accord_it.vice==0:
                         new.append(tie)
                     new.append(bd)
                     if bar_count % enter_th == 0:
                         new.append(enter)
-                    backward = copy.deepcopy(accord)
-                    backward.beat = accord.beat - (bar-left)
+                    backward = copy.deepcopy(accord_it)
+                    backward.beat = accord_it.beat - (bar-left)
                     new.append(backward)
 
-                    left = (left + accord.beat) % bar
+                    left = (left + accord_it.beat) % bar
             
             else: # 온음표가 생기는 경우
-                forward = copy.deepcopy(accord)
+                forward = copy.deepcopy(accord_it)
                 forward.beat = bar - left
                 new.append(forward)
                 bar_count += 1
-                if accord.vice==0:
+                if accord_it.vice==0:
                     new.append(tie)
                 new.append(bd)
 
@@ -220,11 +220,11 @@ def divide_beat(accords, bar):
                     new.append(enter)
                 
                 for i in range(quo-1):
-                    whole_note = copy.deepcopy(accord)
+                    whole_note = copy.deepcopy(accord_it)
                     whole_note.beat = bar
                     new.append(whole_note)
                     
-                    if accord.vice==0:
+                    if accord_it.vice==0:
                         new.append(tie)
 
                     bar_count += 1
@@ -234,20 +234,20 @@ def divide_beat(accords, bar):
                         new.append(enter)
 
                     
-                backward = copy.deepcopy(accord)
-                backward.beat = (left + accord.beat) % bar
+                backward = copy.deepcopy(accord_it)
+                backward.beat = (left + accord_it.beat) % bar
                 if not backward.beat == 0:
-                    if accord.vice==0:
+                    if accord_it.vice==0:
                         new.append(tie)
 
                     new.append(backward)
 
-                left = (left + accord.beat) % bar
+                left = (left + accord_it.beat) % bar
 
     
     i = -1
     accord_last = new[i]
-    while abs(i) < len(new) and accord.beat==0:
+    while abs(i) < len(new) and accord_last.beat==0:
         i += -1
         accord_last = new[i]
     new[i].beat = new[i].beat + bar - left
@@ -279,23 +279,23 @@ def merge_rests(accords):
 def translate_beat(accords):
     new = []
     
-    tie = accord_ds()
+    tie = accord()
     tie.vice = -2
     tie.beat = 0
     tie.notes = []
 
-    for accord in accords:
-        if accord.beat == 0:
-            new.append(accord)
+    for accord_it in accords:
+        if accord_it.beat == 0:
+            new.append(accord_it)
         else:
-            beat = translate_beat_sub(accord.beat)
+            beat = translate_beat_sub(accord_it.beat)
             for i in range(len(beat)-1):
-                accord_tmp = copy.deepcopy(accord)
+                accord_tmp = copy.deepcopy(accord_it)
                 accord_tmp.beat = beat[i]
                 new.append(accord_tmp)
-                if accord.vice == 0:
+                if accord_it.vice == 0:
                     new.append(tie)
-            accord_tmp = copy.deepcopy(accord)
+            accord_tmp = copy.deepcopy(accord_it)
             accord_tmp.beat = beat[-1]
             new.append(accord_tmp)
     return new
@@ -322,14 +322,14 @@ if __name__=='__main__':
         notes = []
         for i in range(12):
             notes.append(note(38+2*i+k, 100, 100))
-        accorrd = accord_ds()
+        accorrd = accord()
         accorrd.notes = notes
         accorrd.beat = 2
         accorrd.vice = 0
         test.accords_left.append(accorrd)
         test.accords_right.append(accorrd)
 
-        accorrd = accord_ds()
+        accorrd = accord()
         accorrd.notes.append(note(38+k,100,100))
         accorrd.vice = 0
         accorrd.beat = 4
