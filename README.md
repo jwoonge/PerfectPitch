@@ -40,10 +40,10 @@ The way to evauation is as follows:
 1. export the result of our project to wav file  
 2. calculate the spectrogram from the wav file's pcm data  
 3. compare two spectrogram (original sound's and result wav file's) by..  
- 1. find onsets by frame energy's peaks  
- 2. using DTW(Dynamic Time Wrapping), find best matches of two onsets  
+ + find onsets by frame energy's peaks  
+ + using DTW(Dynamic Time Wrapping), find best matches of two onsets  
   - the rate of sqrt((# of mathed onsets)/(# of union of onsets)) is treated as "beat accuracy"  
- 3. the average of cosin similarities for every pairs of matched onsets is treated as "pitch accuracy"  
+ + the average of cosin similarities for every pairs of matched onsets is treated as "pitch accuracy"  
   - cosin similarity consider the difference of value, but sheet music does not consider accurate velocity so we doubled the score.  
 4. beat accuracy * pitch accuracy will be final accuracy  
 
@@ -60,13 +60,20 @@ As Multi-user Access control is based on public IP, there can be a risk of confl
 
 ## Usages  
 
-You can run PerfectPitch locally by
+You can run PerfectPitch Website locally by typing to cmd  
+```
+$ python PerfectPitch.py 
+```
+And then, you can connect "http://127.0.0.1:5000/" - default  
+  
+You can only run 'Piano music to sheet music' part, by  
 ```
 $ python PerfectPitch.py https://www.youtube.com/your?links  
-$ python PerfectPitch.py https://www.youtube.com/your?links v
+$ python PerfectPitch.py https://www.youtube.com/your?links --v
 ```
-argument v means 'want to measure accuracy'  
-
+argument --v means 'want to measure accuracy'  
+After that, the output pdf, midi (,pdf) file will be generated.  
+  
 if you want more information, please refer to  
 ['PitchDetectionModule/ReadMe.md'](https://github.com/jwoonge/PerfectPitch/tree/master/PitchDetectModule)  
 
